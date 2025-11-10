@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-This is a CachyOS installation automation repository with Niri window manager configuration. It provides a reproducible setup for CachyOS CLI installations with 205 official packages, 6 AUR packages (including dms-shell-git), and 9 flatpak applications. The setup uses the Limine bootloader with optional secure boot support.
+This is a CachyOS installation automation repository with Niri window manager configuration. It provides a reproducible setup for CachyOS CLI installations with 208 official packages, 6 AUR packages (including dms-shell-git), and 7 flatpak applications. The setup uses the Limine bootloader with optional secure boot support.
 
 ## Core Architecture
 

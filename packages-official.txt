@@ -56,7 +56,9 @@ ffmpegthumbnailer
 flatpak
 fsarchiver
 git
+github-cli
 glances
+gnome-keyring
 grimblast-git
 gst-libav
 gst-plugin-pipewire
@@ -155,6 +157,7 @@ rsync
 rtkit
 sbctl
 sddm
+seahorse
 sg3_utils
 smartmontools
 s-nail

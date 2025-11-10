@@ -3,9 +3,9 @@
 Easy-to-deploy niri configuration and application setup for CachyOS installations.
 
 This setup includes:
-- **205** official repository packages
+- **208** official repository packages
 - **6** AUR packages (including dms-shell-git)
-- **9** flatpak applications
+- **7** flatpak applications
 - Complete niri configuration with modular config files
 - Limine bootloader with secure boot support
 

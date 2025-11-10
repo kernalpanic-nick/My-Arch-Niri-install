@@ -1,4 +1,15 @@
 #!/bin/bash
+#
+# Niri Setup Installer for CachyOS/Arch Linux
+#
+# This script installs:
+# - 208 official repository packages (including Niri, Wayland essentials)
+# - 6 AUR packages (including dms-shell-git)
+# - 7 flatpak applications
+# - Niri window manager configuration with DMS integration
+#
+# Requirements: CachyOS or Arch Linux with internet connection
+#
 
 set -e
 
@@ -13,10 +24,19 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 echo -e "${GREEN}=== Niri Setup Installer ===${NC}\n"
 
-# Check if running on Arch Linux
+# Check if running on Arch Linux or CachyOS
 if [ ! -f /etc/arch-release ]; then
-    echo -e "${RED}Error: This script is designed for Arch Linux${NC}"
+    echo -e "${RED}Error: This script is designed for Arch Linux / CachyOS${NC}"
     exit 1
+fi
+
+# Detect if running CachyOS
+if [ -f /etc/cachyos-release ]; then
+    echo -e "${GREEN}Detected CachyOS${NC}"
+    CACHYOS=true
+else
+    echo -e "${YELLOW}Detected Arch Linux${NC}"
+    CACHYOS=false
 fi
 
 # Function to check if command exists

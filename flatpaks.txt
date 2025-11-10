@@ -1,7 +1,5 @@
 app.ytmdesktop.ytmdesktop
-com.feaneron.Boatswain
 com.github.iwalton3.jellyfin-media-player
-com.protonvpn.www
 com.visualstudio.code
 io.github.flattool.Ignition
 me.proton.Mail
