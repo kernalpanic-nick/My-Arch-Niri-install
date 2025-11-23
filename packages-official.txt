@@ -157,7 +157,6 @@ sof-firmware
 steam
 sudo
 swayidle
-swaylock
 sysfsutils
 telegram-desktop
 texinfo

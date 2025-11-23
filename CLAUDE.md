@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-This is a CachyOS installation automation repository with Niri window manager configuration. It provides a reproducible setup for CachyOS CLI installations with 202 official packages (system-agnostic), hardware-specific drivers (GPU/CPU automatically detected!), 4 AUR packages (including dms-shell-git), and 14 flatpak applications. The setup uses the Limine bootloader with optional secure boot support. All configurations are hardware-agnostic with no hardcoded settings. Features automatic hardware detection, automatic driver installation, and automatic monitor configuration on first run.
+This is a CachyOS installation automation repository with Niri window manager configuration. It provides a reproducible setup for CachyOS CLI installations with 201 official packages (system-agnostic), hardware-specific drivers (GPU/CPU automatically detected!), 4 AUR packages (including dms-shell-git), and 14 flatpak applications. The setup uses the Limine bootloader with optional secure boot support. All configurations are hardware-agnostic with no hardcoded settings. Features automatic hardware detection, automatic driver installation, automatic monitor configuration on first run, and DMS lock screen with auto-lock.
 
 ## Core Architecture
 
@@ -25,7 +25,7 @@ The complete installation follows this sequence:
 - **Main config**: `.config/niri/config.kdl` - Primary niri configuration (KDL format)
 - **Modular configs**: `.config/niri/dms/` - Separated configuration modules (binds, colors, layout, wpblur)
 - **Package lists**: Four text files with one package per line (comments start with `#`)
-  - `packages-official.txt`: System-agnostic official packages (202)
+  - `packages-official.txt`: System-agnostic official packages (201)
   - `packages-hardware.txt`: Hardware-specific drivers (reference only - automatically detected!)
   - `packages-aur.txt`: AUR packages (4)
   - `flatpaks.txt`: Flatpak applications (14)
@@ -193,8 +193,12 @@ If automatic detection fails, you can manually uncomment drivers in `packages-ha
 **DMS Integration:**
 - Most keybindings spawn `dms ipc call` commands
 - If dms-shell-git is not installed, keybindings will fail silently
-- The system depends on `spawn-at-startup "dms" "run"` (line 132)
+- The system depends on `spawn-at-startup "dms" "run"` (line 140)
 - DMS provides: panel, launcher, clipboard, notifications, lock screen
+- **Lock Screen**: DMS lock is used for both manual (Mod+Alt+L) and automatic locking
+  - Auto-lock after 10 minutes of inactivity (managed by swayidle)
+  - Auto-lock before sleep/suspend
+  - No separate lock screen package needed (swaylock removed)
 
 **Symlink Behavior:**
 - Config changes in `~/.config/niri/` reflect in this repo (bidirectional)

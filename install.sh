@@ -3,11 +3,11 @@
 # Niri Setup Installer for CachyOS/Arch Linux
 #
 # This script installs:
-# - 202 official repository packages (including Niri, Wayland essentials)
+# - 201 official repository packages (including Niri, Wayland essentials)
 # - Hardware-specific drivers (GPU/CPU, automatically detected!)
 # - 4 AUR packages (including dms-shell-git)
 # - 14 flatpak applications
-# - Niri window manager configuration with DMS integration (no hardcoded monitors)
+# - Niri window manager configuration with DMS integration (no hardcoded settings)
 #
 # Requirements: CachyOS or Arch Linux with internet connection
 #

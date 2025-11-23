@@ -3,7 +3,7 @@
 Easy-to-deploy niri configuration and application setup for CachyOS installations.
 
 This setup includes:
-- **202** official repository packages (system-agnostic)
+- **201** official repository packages (system-agnostic)
 - **Hardware-specific drivers** (GPU/CPU microcode - automatically detected!)
 - **4** AUR packages (including dms-shell-git)
 - **14** flatpak applications
@@ -11,6 +11,7 @@ This setup includes:
 - Limine bootloader with secure boot support
 - **Automatic hardware detection** (GPU/CPU drivers)
 - **Automatic monitor configuration** (first-run + manual keybinding)
+- **DMS lock screen** (manual + auto-lock)
 
 ## Prerequisites
 
@@ -52,13 +53,15 @@ On first niri login:
 ```
 .
 ├── install.sh                # Main installation script
-├── packages-official.txt     # Official packages (202 packages, system-agnostic)
-├── packages-hardware.txt     # Hardware-specific drivers (GPU/CPU - YOU MUST EDIT THIS!)
+├── packages-official.txt     # Official packages (201 packages, system-agnostic)
+├── packages-hardware.txt     # Hardware-specific drivers (GPU/CPU - auto-detected!)
 ├── packages-aur.txt          # AUR packages (4 packages)
 ├── flatpaks.txt              # Flatpak applications (14 apps)
 ├── .config/
 │   └── niri/
 │       ├── config.kdl        # Main niri configuration (generic, no hardcoded monitors)
+│       ├── scripts/
+│       │   └── configure-monitors.sh  # Automatic monitor configuration
 │       └── dms/              # Modular config files
 │           ├── binds.kdl
 │           ├── colors.kdl
@@ -205,9 +208,15 @@ This setup uses **DMS** (dms-shell-git from AUR) as the desktop shell for Niri:
 - Process list
 - Settings/control center
 - Notifications
-- Lock screen
+- Lock screen (manual + auto-lock)
 
-**Auto-startup**: DMS is configured to start automatically in `config.kdl:132` via `spawn-at-startup "dms" "run"`
+**Lock Screen**:
+- **Manual Lock**: Press `Mod+Alt+L` to lock immediately
+- **Auto-lock**: Automatically locks after 10 minutes of inactivity
+- **Before Sleep**: Automatically locks before system suspend/sleep
+- Managed by `swayidle` + DMS lock integration
+
+**Auto-startup**: DMS is configured to start automatically in `config.kdl:140` via `spawn-at-startup "dms" "run"`
 
 **Note**: Most keybindings in this config use `dms ipc call` commands. If DMS is not installed, these keybindings won't work.
 
