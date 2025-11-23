@@ -174,9 +174,7 @@ for order_idx in "${MONITOR_ORDER[@]}"; do
 
         output_lines+="output \"$connector\" {\n"
         output_lines+="    mode \"$best_mode\"\n"
-        if [ $x_position -gt 0 ]; then
-            output_lines+="    position x=$x_position y=0\n"
-        fi
+        output_lines+="    position x=$x_position y=0\n"
         output_lines+="}\n\n"
 
         x_position=$((x_position + width))
