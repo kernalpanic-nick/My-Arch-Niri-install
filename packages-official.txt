@@ -3,7 +3,6 @@ alacritty
 alsa-firmware
 alsa-plugins
 alsa-utils
-amd-ucode
 awesome-terminal-fonts
 base
 base-devel
@@ -76,14 +75,10 @@ iwd
 jfsutils
 kitty
 less
-lib32-nvidia-utils
-lib32-opencl-nvidia
 lib32-vulkan-icd-loader
-lib32-vulkan-radeon
 libdvdcss
 libgsf
 libopenraw
-libva-nvidia-driver
 libwnck3
 limine
 limine-mkinitcpio-hook
@@ -92,8 +87,6 @@ linux-cachyos
 linux-cachyos-headers
 linux-cachyos-lts
 linux-cachyos-lts-headers
-linux-cachyos-lts-nvidia-open
-linux-cachyos-nvidia-open
 linux-firmware
 localsend
 logrotate
@@ -128,9 +121,6 @@ noto-fonts-cjk
 noto-fonts-emoji
 nss-mdns
 ntp
-nvidia-settings
-nvidia-utils
-opencl-nvidia
 openssh
 os-prober
 pacman-contrib
@@ -183,7 +173,6 @@ vim
 vivaldi
 vlc-plugins-all
 vulkan-icd-loader
-vulkan-radeon
 webkit2gtk
 webkit2gtk-4.1
 wget
@@ -195,7 +184,6 @@ wpa_supplicant
 xdg-desktop-portal-gtk
 xdg-user-dirs
 xf86-input-libinput
-xf86-video-amdgpu
 xfsprogs
 xl2tpd
 xorg-server

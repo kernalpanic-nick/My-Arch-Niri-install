@@ -3,12 +3,15 @@
 # Niri Setup Installer for CachyOS/Arch Linux
 #
 # This script installs:
-# - 208 official repository packages (including Niri, Wayland essentials)
+# - ~200 official repository packages (including Niri, Wayland essentials)
+# - Hardware-specific drivers (GPU/CPU, configured in packages-hardware.txt)
 # - 6 AUR packages (including dms-shell-git)
 # - 7 flatpak applications
 # - Niri window manager configuration with DMS integration
 #
 # Requirements: CachyOS or Arch Linux with internet connection
+#
+# IMPORTANT: Edit packages-hardware.txt before running to select your GPU/CPU drivers!
 #
 
 set -e
@@ -100,6 +103,29 @@ install_aur_packages() {
     fi
 }
 
+# Install hardware-specific packages
+install_hardware_packages() {
+    echo -e "\n${YELLOW}Checking for hardware-specific packages...${NC}"
+
+    if [ ! -f "$SCRIPT_DIR/packages-hardware.txt" ]; then
+        echo -e "${YELLOW}packages-hardware.txt not found, skipping${NC}"
+        return 0
+    fi
+
+    # Read packages, skip comments and empty lines
+    packages=$(grep -v '^#' "$SCRIPT_DIR/packages-hardware.txt" | grep -v '^$' | tr '\n' ' ')
+
+    if [ -z "$packages" ]; then
+        echo -e "${YELLOW}No hardware-specific packages selected.${NC}"
+        echo -e "${YELLOW}Edit packages-hardware.txt to uncomment drivers for your hardware.${NC}"
+        echo -e "${YELLOW}See the file for instructions on selecting GPU/CPU drivers.${NC}"
+        return 0
+    fi
+
+    echo -e "${GREEN}Installing hardware-specific packages...${NC}"
+    sudo pacman -S --needed --noconfirm $packages
+}
+
 # Install flatpak applications
 install_flatpaks() {
     echo -e "\n${YELLOW}Installing flatpak applications...${NC}"
@@ -161,6 +187,7 @@ main() {
 
     install_aur_helper
     install_official_packages
+    install_hardware_packages
     install_aur_packages
     install_flatpaks
     setup_symlinks

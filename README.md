@@ -3,7 +3,8 @@
 Easy-to-deploy niri configuration and application setup for CachyOS installations.
 
 This setup includes:
-- **208** official repository packages
+- **~200** official repository packages (system-agnostic)
+- **Hardware-specific drivers** (GPU/CPU microcode - configured per system)
 - **6** AUR packages (including dms-shell-git)
 - **7** flatpak applications
 - Complete niri configuration with modular config files
@@ -24,9 +25,15 @@ After completing CachyOS CLI installation and booting into your minimal system:
 git clone https://github.com/yourusername/yourrepo.git ~/niri-setup
 cd ~/niri-setup
 
+# IMPORTANT: Configure your hardware drivers first!
+# Edit packages-hardware.txt and uncomment lines for YOUR GPU/CPU
+nano packages-hardware.txt  # or use vim, micro, etc.
+
 # Run the installer (installs Niri, DMS, and all packages)
 ./install.sh
 ```
+
+**Critical First Step:** Before running `install.sh`, you MUST edit `packages-hardware.txt` to select your GPU and CPU drivers. See [Configuring Hardware Drivers](#configuring-hardware-drivers) below.
 
 ## What This Does
 
@@ -42,19 +49,78 @@ The install script will:
 
 ```
 .
-├── install.sh              # Main installation script
-├── packages-official.txt   # Official repository packages (205 packages)
-├── packages-aur.txt        # AUR packages (6 packages)
-├── flatpaks.txt            # Flatpak applications (9 apps)
+├── install.sh                # Main installation script
+├── packages-official.txt     # Official packages (~200 packages, system-agnostic)
+├── packages-hardware.txt     # Hardware-specific drivers (GPU/CPU - YOU MUST EDIT THIS!)
+├── packages-aur.txt          # AUR packages (6 packages)
+├── flatpaks.txt              # Flatpak applications (7 apps)
 ├── .config/
 │   └── niri/
-│       ├── config.kdl      # Main niri configuration
-│       └── dms/            # Modular config files
+│       ├── config.kdl        # Main niri configuration
+│       └── dms/              # Modular config files
 │           ├── binds.kdl
 │           ├── colors.kdl
 │           ├── layout.kdl
 │           └── wpblur.kdl
-└── README.md
+├── CLAUDE.md                 # Repository guidance for AI assistants
+├── SECURE_BOOT.md            # Detailed secure boot setup guide
+└── README.md                 # This file
+```
+
+## Configuring Hardware Drivers
+
+**CRITICAL:** Before running the installation script, you MUST configure your hardware-specific drivers.
+
+### Step 1: Identify Your Hardware
+
+```bash
+# Check your CPU vendor (AMD or Intel)
+cat /proc/cpuinfo | grep vendor | head -1
+
+# Check your GPU(s)
+lspci | grep -E "VGA|3D"
+```
+
+### Step 2: Edit packages-hardware.txt
+
+Open the file and uncomment (remove the `#` from) the lines matching your hardware:
+
+```bash
+nano packages-hardware.txt
+```
+
+**Example for AMD CPU + NVIDIA GPU:**
+```
+# Uncomment this line:
+amd-ucode
+
+# Uncomment these lines:
+nvidia-utils
+lib32-nvidia-utils
+opencl-nvidia
+lib32-opencl-nvidia
+libva-nvidia-driver
+nvidia-settings
+linux-cachyos-nvidia-open
+linux-cachyos-lts-nvidia-open
+```
+
+**Example for Intel CPU + AMD GPU:**
+```
+# Uncomment this line:
+intel-ucode
+
+# Uncomment these lines:
+vulkan-radeon
+lib32-vulkan-radeon
+xf86-video-amdgpu
+```
+
+### Step 3: Run Installation
+
+After configuring your hardware drivers, run the installation script:
+```bash
+./install.sh
 ```
 
 ## Customization
@@ -62,7 +128,8 @@ The install script will:
 ### Adding/Removing Packages
 
 Edit the appropriate file to add or remove packages:
-- `packages-official.txt` - Official Arch repository packages
+- `packages-official.txt` - Official Arch repository packages (system-agnostic)
+- `packages-hardware.txt` - Hardware-specific GPU/CPU drivers (MUST be configured!)
 - `packages-aur.txt` - AUR packages
 - `flatpaks.txt` - Flatpak applications
 
@@ -103,13 +170,31 @@ sudo pacman -S --needed git
 git clone <your-repo-url> ~/niri-setup
 cd ~/niri-setup
 
-# Run installation script
+# STEP 1: Configure your hardware drivers
+# Identify your CPU (AMD or Intel)
+cat /proc/cpuinfo | grep vendor | head -1
+
+# Identify your GPU(s) (NVIDIA, AMD, or Intel)
+lspci | grep -E "VGA|3D"
+
+# STEP 2: Edit packages-hardware.txt
+# Uncomment lines matching YOUR hardware (see instructions in the file)
+nano packages-hardware.txt
+
+# STEP 3: Run installation script
 ./install.sh
 
-# Log out from TTY
+# STEP 4: Configure monitor setup (IMPORTANT!)
+# The default config has hardcoded monitors for a triple-monitor setup
+# Edit the monitor configuration to match YOUR displays
+nano .config/niri/config.kdl
+# See lines 8-24 for monitor configuration
+# Find your monitor names with: niri msg outputs (after starting niri)
+
+# STEP 5: Log out from TTY
 logout
 
-# Start Niri session
+# STEP 6: Start Niri session
 # Either from display manager (if installed) or run: niri
 ```
 
@@ -143,14 +228,36 @@ This setup uses **DMS** (dms-shell-git from AUR) as the desktop shell for Niri:
 
 **Note**: Most keybindings in this config use `dms ipc call` commands. If DMS is not installed, these keybindings won't work.
 
-## Manual Steps
+## Post-Installation Configuration
 
-After installation, you may want to:
+### REQUIRED: Monitor Setup
 
-- Configure display settings in `.config/niri/config.kdl` (especially monitor setup)
-- Adjust DMS theming and settings
-- Configure your terminal emulator
-- Set up wallpaper (via DMS settings or swaybg)
+The default niri configuration has **hardcoded monitor settings** for a specific triple-monitor setup. You MUST update this for your displays:
+
+1. **Start Niri** (even if displays are wrong)
+2. **Open a terminal** (Mod+T, usually Super+T)
+3. **Find your monitor names:**
+   ```bash
+   niri msg outputs
+   ```
+4. **Edit the config:**
+   ```bash
+   nano ~/.config/niri/config.kdl
+   ```
+5. **Update lines 8-24** with YOUR monitor names, resolutions, and positions
+6. **Reload configuration:**
+   ```bash
+   niri msg action reload-config
+   ```
+
+### Optional Customizations
+
+After installation, you may also want to:
+
+- Adjust DMS theming and settings (Mod+Comma for settings)
+- Configure your terminal emulator (default: kitty)
+- Set up wallpaper (via DMS settings: Mod+Y)
+- Review and customize keybindings in `~/.config/niri/config.kdl`
 
 ## Backup
 

@@ -131,7 +131,8 @@ overview {
 spawn-at-startup "bash" "-c" "wl-paste --watch cliphist store &"
 spawn-at-startup "dms" "run"
 spawn-at-startup "/usr/lib/mate-polkit/polkit-mate-authentication-agent-1"
-spawn-at-startup "sh" "-c" "eval $(gnome-keyring-daemon --start --components=pkcs11,secrets,ssh)"
+spawn-at-startup "sh" "-c" "eval $(gnome-keyring-daemon --start --components=pkcs11,secrets,ssh) && systemctl --user import-environment GNOME_KEYRING_CONTROL SSH_AUTH_SOCK && dbus-update-activation-environment --systemd GNOME_KEYRING_CONTROL SSH_AUTH_SOCK"
+spawn-at-startup "swayidle" "-w" "timeout" "601" "niri msg action power-off-monitors" "timeout" "600" "swaylock -f" "before-sleep" "swaylock -f"
 environment {
   XDG_CURRENT_DESKTOP "niri"
   QT_QPA_PLATFORM "wayland"
@@ -182,55 +183,137 @@ animations {
 // https://github.com/YaLTeR/niri/wiki/Configuration:-Window-Rules
 // Work around WezTerm's initial configure bug
 // by setting an empty default-column-width.
+
 window-rule {
-    // This regular expression is intentionally made as specific as possible,
-    // since this is the default config, and we want no false positives.
-    // You can get away with just app-id="wezterm" if you want.
     match app-id=r#"^org\.wezfurlong\.wezterm$"#
     default-column-width {}
 }
+
 window-rule {
     match app-id=r#"^org\.gnome\."#
     draw-border-with-background false
     geometry-corner-radius 12
     clip-to-geometry true
 }
+
+// Split these into separate rules
 window-rule {
     match app-id=r#"^gnome-control-center$"#
-    match app-id=r#"^pavucontrol$"#
-    match app-id=r#"^nm-connection-editor$"#
     default-column-width { proportion 0.5; }
     open-floating false
 }
 window-rule {
+    match app-id=r#"^pavucontrol$"#
+    default-column-width { proportion 0.5; }
+    open-floating false
+}
+window-rule {
+    match app-id=r#"^nm-connection-editor$"#
+    default-column-width { proportion 0.5; }
+    open-floating false
+}
+
+// Split floating apps into separate rules
+window-rule {
     match app-id=r#"^gnome-calculator$"#
-    match app-id=r#"^galculator$"#
-    match app-id=r#"^blueman-manager$"#
-    match app-id=r#"^org\.gnome\.Nautilus$"#
-    match app-id=r#"^steam$"#
-    match app-id=r#"^xdg-desktop-portal$"#
     open-floating true
 }
 window-rule {
+    match app-id=r#"^galculator$"#
+    open-floating true
+}
+window-rule {
+    match app-id=r#"^blueman-manager$"#
+    open-floating true
+}
+window-rule {
+    match app-id=r#"^org\.gnome\.Nautilus$"#
+    open-floating true
+}
+window-rule {
+    match app-id=r#"^xdg-desktop-portal$"#
+    open-floating true
+}
+
+// Split terminal apps into separate rules
+window-rule {
     match app-id=r#"^org\.wezfurlong\.wezterm$"#
+    draw-border-with-background false
+}
+window-rule {
     match app-id="Alacritty"
+    draw-border-with-background false
+}
+window-rule {
     match app-id="zen"
+    draw-border-with-background false
+}
+window-rule {
     match app-id="com.mitchellh.ghostty"
+    draw-border-with-background false
+}
+window-rule {
     match app-id="kitty"
     draw-border-with-background false
 }
+
 window-rule {
     match is-active=false
     opacity 0.9
 }
+
+// Split PiP and zoom
 window-rule {
     match app-id=r#"firefox$"# title="^Picture-in-Picture$"
-    match app-id="zoom"
     open-floating true
 }
 window-rule {
+    match app-id="zoom"
+    open-floating false
+}
+
+window-rule {
+    match app-id="^select a window or an application"
+    open-floating true
+}
+
+window-rule {
     geometry-corner-radius 12
     clip-to-geometry true
+}
+
+// Steam Settings
+window-rule {
+    match title=r#"^Steam Settings$"#
+    open-floating true
+}
+
+// Steam Friends - separate rules, not multiple matches
+window-rule {
+    match title=r#"^Friends List$"#
+    open-floating true
+}
+window-rule {
+    match title=r#"^Friends$"#
+    open-floating true
+}
+
+// Steam chat
+window-rule {
+    match title=r#".*Steam Chat.*"#
+    open-floating true
+}
+
+// Steam games fullscreen
+window-rule {
+    match app-id=r#"^steam_app_"#
+    open-fullscreen true
+}
+
+// Bitwarden - just use title match
+window-rule {
+    match title=r#"^Bitwarden"#
+    open-floating true
 }
 binds {
     // === System & Overview ===
