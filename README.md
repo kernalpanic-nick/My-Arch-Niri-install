@@ -4,11 +4,12 @@ Easy-to-deploy niri configuration and application setup for CachyOS installation
 
 This setup includes:
 - **202** official repository packages (system-agnostic)
-- **Hardware-specific drivers** (GPU/CPU microcode - configured per system)
+- **Hardware-specific drivers** (GPU/CPU microcode - automatically detected!)
 - **4** AUR packages (including dms-shell-git)
 - **14** flatpak applications
 - Complete niri configuration with modular config files (no hardware-specific settings)
 - Limine bootloader with secure boot support
+- Automatic hardware detection and driver installation
 
 ## Prerequisites
 
@@ -25,15 +26,11 @@ After completing CachyOS CLI installation and booting into your minimal system:
 git clone https://github.com/yourusername/yourrepo.git ~/niri-setup
 cd ~/niri-setup
 
-# IMPORTANT: Configure your hardware drivers first!
-# Edit packages-hardware.txt and uncomment lines for YOUR GPU/CPU
-nano packages-hardware.txt  # or use vim, micro, etc.
-
-# Run the installer (installs Niri, DMS, and all packages)
+# Run the installer - it will automatically detect and install drivers!
 ./install.sh
 ```
 
-**Critical First Step:** Before running `install.sh`, you MUST edit `packages-hardware.txt` to select your GPU and CPU drivers. See [Configuring Hardware Drivers](#configuring-hardware-drivers) below.
+The installer will automatically detect your CPU (AMD/Intel) and GPU(s) (NVIDIA/AMD/Intel) and install the appropriate drivers with your confirmation.
 
 ## What This Does
 
@@ -41,9 +38,10 @@ The install script will:
 
 1. **Install AUR Helper**: Sets up `paru` if you don't have `paru` or `yay` installed
 2. **Install Official Packages**: Installs packages from official CachyOS/Arch repos (including Niri, Wayland essentials)
-3. **Install AUR Packages**: Installs packages from the AUR (including dms-shell-git)
-4. **Install Flatpaks**: Installs flatpak applications from Flathub
-5. **Setup Configs**: Symlinks `.config/niri` to your home directory with full Niri + DMS configuration
+3. **Detect & Install Hardware Drivers**: Automatically detects CPU/GPU and installs appropriate drivers
+4. **Install AUR Packages**: Installs packages from the AUR (including dms-shell-git)
+5. **Install Flatpaks**: Installs flatpak applications from Flathub
+6. **Setup Configs**: Symlinks `.config/niri` to your home directory with full Niri + DMS configuration
 
 ## File Structure
 
@@ -67,61 +65,23 @@ The install script will:
 └── README.md                 # This file
 ```
 
-## Configuring Hardware Drivers
+## Automatic Hardware Detection
 
-**CRITICAL:** Before running the installation script, you MUST configure your hardware-specific drivers.
+The installation script automatically detects your hardware and installs the appropriate drivers:
 
-### Step 1: Identify Your Hardware
+**What gets detected:**
+- **CPU**: AMD or Intel (installs appropriate microcode)
+- **GPU(s)**: NVIDIA, AMD, and/or Intel (installs appropriate drivers)
+- **Hybrid setups**: Automatically handles systems with multiple GPUs (e.g., Intel iGPU + NVIDIA dGPU)
 
-```bash
-# Check your CPU vendor (AMD or Intel)
-cat /proc/cpuinfo | grep vendor | head -1
+**During installation:**
+1. The script detects your hardware
+2. Shows you what will be installed
+3. Asks for confirmation before installing drivers
+4. You can skip automatic detection and manually configure if needed
 
-# Check your GPU(s)
-lspci | grep -E "VGA|3D"
-```
-
-### Step 2: Edit packages-hardware.txt
-
-Open the file and uncomment (remove the `#` from) the lines matching your hardware:
-
-```bash
-nano packages-hardware.txt
-```
-
-**Example for AMD CPU + NVIDIA GPU:**
-```
-# Uncomment this line:
-amd-ucode
-
-# Uncomment these lines:
-nvidia-utils
-lib32-nvidia-utils
-opencl-nvidia
-lib32-opencl-nvidia
-libva-nvidia-driver
-nvidia-settings
-linux-cachyos-nvidia-open
-linux-cachyos-lts-nvidia-open
-```
-
-**Example for Intel CPU + AMD GPU:**
-```
-# Uncomment this line:
-intel-ucode
-
-# Uncomment these lines:
-vulkan-radeon
-lib32-vulkan-radeon
-xf86-video-amdgpu
-```
-
-### Step 3: Run Installation
-
-After configuring your hardware drivers, run the installation script:
-```bash
-./install.sh
-```
+**Manual Override (if needed):**
+If automatic detection fails or you want manual control, you can edit `packages-hardware.txt` to uncomment specific drivers, and the script will respect your manual selection.
 
 ## Customization
 
@@ -129,11 +89,13 @@ After configuring your hardware drivers, run the installation script:
 
 Edit the appropriate file to add or remove packages:
 - `packages-official.txt` - Official Arch repository packages (system-agnostic)
-- `packages-hardware.txt` - Hardware-specific GPU/CPU drivers (MUST be configured!)
+- `packages-hardware.txt` - Hardware-specific GPU/CPU drivers (reference/manual override only - auto-detected by default!)
 - `packages-aur.txt` - AUR packages
 - `flatpaks.txt` - Flatpak applications
 
 Lines starting with `#` are comments and will be ignored.
+
+**Note:** Hardware drivers are automatically detected during installation, so you don't need to edit `packages-hardware.txt` unless you want to manually override the automatic detection.
 
 ### Modifying Configs
 
@@ -170,31 +132,24 @@ sudo pacman -S --needed git
 git clone <your-repo-url> ~/niri-setup
 cd ~/niri-setup
 
-# STEP 1: Configure your hardware drivers
-# Identify your CPU (AMD or Intel)
-cat /proc/cpuinfo | grep vendor | head -1
-
-# Identify your GPU(s) (NVIDIA, AMD, or Intel)
-lspci | grep -E "VGA|3D"
-
-# STEP 2: Edit packages-hardware.txt
-# Uncomment lines matching YOUR hardware (see instructions in the file)
-nano packages-hardware.txt
-
-# STEP 3: Run installation script
+# STEP 1: Run installation script (hardware auto-detected!)
 ./install.sh
+# The script will:
+# - Detect your CPU and GPU(s)
+# - Show you what drivers will be installed
+# - Ask for confirmation before installing
 
-# STEP 4: Configure monitor setup (REQUIRED!)
+# STEP 2: Configure monitor setup (REQUIRED!)
 # The config has NO monitor configuration by default
 # You MUST add your monitor configuration before starting niri
 nano .config/niri/config.kdl
 # See lines 9-32 for examples and instructions
 # You'll configure this after installation when you can run: niri msg outputs
 
-# STEP 5: Log out from TTY
+# STEP 3: Log out from TTY
 logout
 
-# STEP 6: Start Niri session
+# STEP 4: Start Niri session
 # Either from display manager (if installed) or run: niri
 ```
 

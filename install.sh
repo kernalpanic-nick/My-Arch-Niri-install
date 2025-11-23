@@ -4,14 +4,18 @@
 #
 # This script installs:
 # - 202 official repository packages (including Niri, Wayland essentials)
-# - Hardware-specific drivers (GPU/CPU, configured in packages-hardware.txt)
+# - Hardware-specific drivers (GPU/CPU, automatically detected!)
 # - 4 AUR packages (including dms-shell-git)
 # - 14 flatpak applications
 # - Niri window manager configuration with DMS integration (no hardcoded monitors)
 #
 # Requirements: CachyOS or Arch Linux with internet connection
 #
-# IMPORTANT: Edit packages-hardware.txt before running to select your GPU/CPU drivers!
+# Features:
+# - Automatic hardware detection (CPU: AMD/Intel, GPU: NVIDIA/AMD/Intel)
+# - Automatic driver installation with user confirmation
+# - Idempotent - safe to run multiple times
+#
 # IMPORTANT: Configure monitors in .config/niri/config.kdl after installation!
 #
 
@@ -104,22 +108,109 @@ install_aur_packages() {
     fi
 }
 
+# Detect CPU vendor
+detect_cpu() {
+    local cpu_vendor=$(grep -m1 "vendor_id" /proc/cpuinfo | awk '{print $3}')
+
+    case "$cpu_vendor" in
+        AuthenticAMD)
+            echo "amd"
+            ;;
+        GenuineIntel)
+            echo "intel"
+            ;;
+        *)
+            echo "unknown"
+            ;;
+    esac
+}
+
+# Detect GPU vendors
+detect_gpus() {
+    local gpus=""
+
+    # Check for NVIDIA
+    if lspci | grep -i "vga\|3d" | grep -iq "nvidia"; then
+        gpus="$gpus nvidia"
+    fi
+
+    # Check for AMD
+    if lspci | grep -i "vga\|3d" | grep -iq "amd\|radeon"; then
+        gpus="$gpus amd"
+    fi
+
+    # Check for Intel
+    if lspci | grep -i "vga\|3d" | grep -iq "intel"; then
+        gpus="$gpus intel"
+    fi
+
+    echo "$gpus"
+}
+
+# Build hardware package list
+build_hardware_packages() {
+    local packages=""
+    local cpu=$(detect_cpu)
+    local gpus=$(detect_gpus)
+
+    # Add CPU microcode
+    case "$cpu" in
+        amd)
+            packages="$packages amd-ucode"
+            ;;
+        intel)
+            packages="$packages intel-ucode"
+            ;;
+    esac
+
+    # Add GPU drivers
+    for gpu in $gpus; do
+        case "$gpu" in
+            nvidia)
+                packages="$packages nvidia-utils lib32-nvidia-utils opencl-nvidia lib32-opencl-nvidia"
+                packages="$packages libva-nvidia-driver nvidia-settings"
+                packages="$packages linux-cachyos-nvidia-open linux-cachyos-lts-nvidia-open"
+                ;;
+            amd)
+                packages="$packages vulkan-radeon lib32-vulkan-radeon xf86-video-amdgpu"
+                ;;
+            intel)
+                packages="$packages vulkan-intel lib32-vulkan-intel intel-media-driver libva-intel-driver"
+                ;;
+        esac
+    done
+
+    echo "$packages"
+}
+
 # Install hardware-specific packages
 install_hardware_packages() {
-    echo -e "\n${YELLOW}Checking for hardware-specific packages...${NC}"
+    echo -e "\n${YELLOW}Detecting hardware...${NC}"
 
-    if [ ! -f "$SCRIPT_DIR/packages-hardware.txt" ]; then
-        echo -e "${YELLOW}packages-hardware.txt not found, skipping${NC}"
+    local cpu=$(detect_cpu)
+    local gpus=$(detect_gpus)
+
+    echo -e "${GREEN}CPU:${NC} $cpu"
+    echo -e "${GREEN}GPU(s):${NC} $gpus"
+
+    # Build package list
+    local packages=$(build_hardware_packages)
+
+    if [ -z "$packages" ]; then
+        echo -e "${YELLOW}No hardware-specific packages detected.${NC}"
+        echo -e "${YELLOW}Hardware detection may have failed. You can manually edit packages-hardware.txt${NC}"
         return 0
     fi
 
-    # Read packages, skip comments and empty lines
-    packages=$(grep -v '^#' "$SCRIPT_DIR/packages-hardware.txt" | grep -v '^$' | tr '\n' ' ')
+    echo -e "\n${GREEN}Will install the following hardware drivers:${NC}"
+    echo "$packages" | tr ' ' '\n' | sed 's/^/  - /'
 
-    if [ -z "$packages" ]; then
-        echo -e "${YELLOW}No hardware-specific packages selected.${NC}"
-        echo -e "${YELLOW}Edit packages-hardware.txt to uncomment drivers for your hardware.${NC}"
-        echo -e "${YELLOW}See the file for instructions on selecting GPU/CPU drivers.${NC}"
+    echo -e "\n${YELLOW}Install these drivers automatically?${NC}"
+    read -p "Continue? [Y/n] " -n 1 -r
+    echo
+
+    if [[ $REPLY =~ ^[Nn]$ ]]; then
+        echo -e "${YELLOW}Skipping hardware drivers. Edit packages-hardware.txt to install manually.${NC}"
         return 0
     fi
 
