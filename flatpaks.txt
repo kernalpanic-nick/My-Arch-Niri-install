@@ -1,7 +1,14 @@
 app.ytmdesktop.ytmdesktop
+com.core447.StreamController
 com.github.iwalton3.jellyfin-media-player
-com.visualstudio.code
 io.github.flattool.Ignition
+io.github.flattool.Warehouse
+io.github.shiftey.Desktop
+io.github.wiiznokes.fan-control
 me.proton.Mail
+org.gnome.Calculator
 org.kde.filelight
 org.libreoffice.LibreOffice
+org.remmina.Remmina
+org.signal.Signal
+us.zoom.Zoom

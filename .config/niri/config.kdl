@@ -5,23 +5,31 @@
 config-notification {
     disable-failed
 }
-// Left monitor - Dell
-output "DP-3" {
-    mode "1920x1080@60.000"
-    position x=0 y=0
-}
 
-// Middle monitor - AOC
-output "HDMI-A-1" {
-    mode "1920x1080@143.999"
-    position x=1920 y=0
-}
-
-// Right monitor - Acer
-output "DP-2" {
-    mode "1920x1080@100.000"
-    position x=3840 y=0
-}
+// === OUTPUT CONFIGURATION ===
+// IMPORTANT: Configure your monitors here!
+//
+// 1. Start niri and open a terminal (Mod+T)
+// 2. Run: niri msg outputs
+// 3. Note your monitor names, resolutions, and preferred refresh rates
+// 4. Uncomment and configure the examples below for YOUR setup
+//
+// Example single monitor:
+// output "eDP-1" {
+//     mode "1920x1080@60.000"
+// }
+//
+// Example dual monitor setup:
+// output "DP-1" {
+//     mode "2560x1440@144.000"
+//     position x=0 y=0
+// }
+// output "HDMI-1" {
+//     mode "1920x1080@60.000"
+//     position x=2560 y=0
+// }
+//
+// See: https://github.com/YaLTeR/niri/wiki/Configuration:-Outputs
 
 gestures {
     hot-corners {

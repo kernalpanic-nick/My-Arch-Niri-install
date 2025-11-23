@@ -3,11 +3,11 @@
 Easy-to-deploy niri configuration and application setup for CachyOS installations.
 
 This setup includes:
-- **~200** official repository packages (system-agnostic)
+- **202** official repository packages (system-agnostic)
 - **Hardware-specific drivers** (GPU/CPU microcode - configured per system)
-- **6** AUR packages (including dms-shell-git)
-- **7** flatpak applications
-- Complete niri configuration with modular config files
+- **4** AUR packages (including dms-shell-git)
+- **14** flatpak applications
+- Complete niri configuration with modular config files (no hardware-specific settings)
 - Limine bootloader with secure boot support
 
 ## Prerequisites
@@ -50,13 +50,13 @@ The install script will:
 ```
 .
 ├── install.sh                # Main installation script
-├── packages-official.txt     # Official packages (~200 packages, system-agnostic)
+├── packages-official.txt     # Official packages (202 packages, system-agnostic)
 ├── packages-hardware.txt     # Hardware-specific drivers (GPU/CPU - YOU MUST EDIT THIS!)
-├── packages-aur.txt          # AUR packages (6 packages)
-├── flatpaks.txt              # Flatpak applications (7 apps)
+├── packages-aur.txt          # AUR packages (4 packages)
+├── flatpaks.txt              # Flatpak applications (14 apps)
 ├── .config/
 │   └── niri/
-│       ├── config.kdl        # Main niri configuration
+│       ├── config.kdl        # Main niri configuration (generic, no hardcoded monitors)
 │       └── dms/              # Modular config files
 │           ├── binds.kdl
 │           ├── colors.kdl
@@ -184,12 +184,12 @@ nano packages-hardware.txt
 # STEP 3: Run installation script
 ./install.sh
 
-# STEP 4: Configure monitor setup (IMPORTANT!)
-# The default config has hardcoded monitors for a triple-monitor setup
-# Edit the monitor configuration to match YOUR displays
+# STEP 4: Configure monitor setup (REQUIRED!)
+# The config has NO monitor configuration by default
+# You MUST add your monitor configuration before starting niri
 nano .config/niri/config.kdl
-# See lines 8-24 for monitor configuration
-# Find your monitor names with: niri msg outputs (after starting niri)
+# See lines 9-32 for examples and instructions
+# You'll configure this after installation when you can run: niri msg outputs
 
 # STEP 5: Log out from TTY
 logout
@@ -232,9 +232,15 @@ This setup uses **DMS** (dms-shell-git from AUR) as the desktop shell for Niri:
 
 ### REQUIRED: Monitor Setup
 
-The default niri configuration has **hardcoded monitor settings** for a specific triple-monitor setup. You MUST update this for your displays:
+The niri configuration has **NO monitor configuration by default**. You MUST configure your displays:
 
-1. **Start Niri** (even if displays are wrong)
+**Before first login** (recommended):
+1. Edit `~/.config/niri/config.kdl` (or `.config/niri/config.kdl` in this repo)
+2. See lines 9-32 for examples and uncomment/modify for your setup
+3. Common single monitor: just uncomment and edit the single monitor example
+
+**After starting Niri** (if you skipped the above):
+1. **Start Niri** (will use default display settings)
 2. **Open a terminal** (Mod+T, usually Super+T)
 3. **Find your monitor names:**
    ```bash
@@ -244,7 +250,7 @@ The default niri configuration has **hardcoded monitor settings** for a specific
    ```bash
    nano ~/.config/niri/config.kdl
    ```
-5. **Update lines 8-24** with YOUR monitor names, resolutions, and positions
+5. **Add your monitor configuration** (see examples in lines 9-32)
 6. **Reload configuration:**
    ```bash
    niri msg action reload-config

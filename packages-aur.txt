@@ -1,6 +1,4 @@
-ccache-ext
 dms-shell-git
 opcode-bin
 python-dlib
-python-face_recognition
-python-face_recognition_models
+visual-studio-code-bin
