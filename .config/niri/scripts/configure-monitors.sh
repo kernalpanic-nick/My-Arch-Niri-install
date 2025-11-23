@@ -34,35 +34,33 @@ fi
 generate_config() {
     local output_lines=""
     local x_position=0
+    local connector=""
+    local mode=""
+    local width=""
 
-    # Parse niri msg outputs
-    # Expected format: Output "name" { ... }
+    # Regex patterns stored in variables to avoid bash parsing issues
+    local output_pattern='^Output.*\(([^)]+)\)$'
+    local mode_pattern='Current mode: ([0-9]+)x([0-9]+) @ ([0-9.]+)'
+
+    # Parse niri msg outputs line by line
+    # Format: Output "Name" (connector)
+    #           Current mode: WIDTHxHEIGHT @ REFRESH Hz
     while IFS= read -r line; do
-        if [[ $line =~ Output\ \"([^\"]+)\" ]]; then
-            output_name="${BASH_REMATCH[1]}"
+        # Match output line: Output "Full Name" (connector)
+        if [[ $line =~ $output_pattern ]]; then
+            connector="${BASH_REMATCH[1]}"
+            mode=""
+            width=""
+        # Match current mode line
+        elif [[ $line =~ $mode_pattern ]]; then
+            width="${BASH_REMATCH[1]}"
+            height="${BASH_REMATCH[2]}"
+            refresh="${BASH_REMATCH[3]}"
+            mode="${width}x${height}@${refresh}"
 
-            # Read the block to get mode
-            mode_line=""
-            while IFS= read -r inner_line; do
-                if [[ $inner_line =~ Current\ mode:.*([0-9]+x[0-9]+@[0-9]+\.[0-9]+) ]]; then
-                    mode="${BASH_REMATCH[1]}"
-                    break
-                fi
-                if [[ $inner_line == "}" ]]; then
-                    break
-                fi
-            done
-
-            # Extract width for positioning next monitor
-            if [[ $mode =~ ^([0-9]+)x ]]; then
-                width="${BASH_REMATCH[1]}"
-            else
-                width=1920  # default fallback
-            fi
-
-            # Generate output block
-            if [ -n "$mode" ]; then
-                output_lines+="output \"$output_name\" {\n"
+            # Generate output block when we have both connector and mode
+            if [ -n "$connector" ] && [ -n "$mode" ]; then
+                output_lines+="output \"$connector\" {\n"
                 output_lines+="    mode \"$mode\"\n"
                 if [ $x_position -gt 0 ]; then
                     output_lines+="    position x=$x_position y=0\n"
@@ -70,6 +68,7 @@ generate_config() {
                 output_lines+="}\n\n"
 
                 x_position=$((x_position + width))
+                connector=""
             fi
         fi
     done <<< "$monitor_data"
@@ -82,11 +81,13 @@ new_config=$(generate_config)
 
 if [ -z "$new_config" ]; then
     echo -e "${RED}Error: Could not generate monitor configuration${NC}"
+    echo -e "${YELLOW}Debug: Monitor data:${NC}"
+    echo "$monitor_data" | head -20
     exit 1
 fi
 
 echo -e "${GREEN}Detected monitors:${NC}"
-echo "$monitor_data" | grep "Output" | sed 's/Output /  - /'
+echo "$monitor_data" | grep "^Output" | sed 's/Output /  - /'
 
 # Show what will be configured
 echo -e "\n${GREEN}Generated configuration:${NC}"
@@ -142,7 +143,7 @@ echo -e "${GREEN}✓ Monitor configuration updated${NC}"
 
 # Reload niri configuration
 echo -e "${YELLOW}Reloading niri configuration...${NC}"
-niri msg action reload-config
+niri msg action load-config-file
 
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}✓ Niri configuration reloaded successfully${NC}"
