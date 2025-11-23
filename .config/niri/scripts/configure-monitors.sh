@@ -2,6 +2,7 @@
 #
 # Automatic Monitor Configuration for Niri
 # Detects connected monitors and generates niri output configuration
+# Selects highest resolution and refresh rate for each monitor
 #
 
 CONFIG_FILE="$HOME/.config/niri/config.kdl"
@@ -30,70 +31,168 @@ if [ -z "$monitor_data" ]; then
     exit 1
 fi
 
-# Parse monitor information and generate config
-generate_config() {
-    local output_lines=""
-    local x_position=0
-    local connector=""
-    local mode=""
-    local width=""
+# Parse monitor information into arrays
+declare -a MONITORS
+declare -a CONNECTORS
+declare -A MONITOR_MODES
 
-    # Regex patterns stored in variables to avoid bash parsing issues
-    local output_pattern='^Output.*\(([^)]+)\)$'
-    local mode_pattern='Current mode: ([0-9]+)x([0-9]+) @ ([0-9.]+)'
+output_pattern='^Output.*\(([^)]+)\)$'
 
-    # Parse niri msg outputs line by line
-    # Format: Output "Name" (connector)
-    #           Current mode: WIDTHxHEIGHT @ REFRESH Hz
-    while IFS= read -r line; do
-        # Match output line: Output "Full Name" (connector)
-        if [[ $line =~ $output_pattern ]]; then
-            connector="${BASH_REMATCH[1]}"
-            mode=""
-            width=""
-        # Match current mode line
-        elif [[ $line =~ $mode_pattern ]]; then
-            width="${BASH_REMATCH[1]}"
-            height="${BASH_REMATCH[2]}"
-            refresh="${BASH_REMATCH[3]}"
-            mode="${width}x${height}@${refresh}"
+current_connector=""
+current_name=""
+in_available_modes=0
 
-            # Generate output block when we have both connector and mode
-            if [ -n "$connector" ] && [ -n "$mode" ]; then
-                output_lines+="output \"$connector\" {\n"
-                output_lines+="    mode \"$mode\"\n"
-                if [ $x_position -gt 0 ]; then
-                    output_lines+="    position x=$x_position y=0\n"
-                fi
-                output_lines+="}\n\n"
+while IFS= read -r line; do
+    # Match output line to get connector
+    if [[ $line =~ $output_pattern ]]; then
+        current_connector="${BASH_REMATCH[1]}"
+        # Extract display name from quotes
+        current_name=$(echo "$line" | sed -n 's/^Output "\(.*\)" (.*/\1/p')
+        CONNECTORS+=("$current_connector")
+        MONITORS+=("$current_name")
+        MONITOR_MODES["$current_connector"]=""
+        in_available_modes=0
+    elif [[ $line =~ "Available modes:" ]]; then
+        in_available_modes=1
+    elif [[ $in_available_modes == 1 && $line =~ ^[[:space:]]+([0-9]+x[0-9]+@[0-9.]+) ]]; then
+        # Extract mode (e.g., "1920x1080@144.000")
+        mode=$(echo "$line" | sed -n 's/^[[:space:]]*\([0-9]*x[0-9]*@[0-9.]*\).*/\1/p')
+        if [ -n "$mode" ] && [ -n "$current_connector" ]; then
+            MONITOR_MODES["$current_connector"]+="$mode "
+        fi
+    elif [[ $in_available_modes == 1 && ! $line =~ ^[[:space:]] ]]; then
+        in_available_modes=0
+    fi
+done <<< "$monitor_data"
 
-                x_position=$((x_position + width))
-                connector=""
+# Find best mode (highest resolution, then highest refresh rate)
+find_best_mode() {
+    local connector="$1"
+    local modes="${MONITOR_MODES[$connector]}"
+    local best_mode=""
+    local best_pixels=0
+    local best_refresh=0
+
+    for mode in $modes; do
+        if [[ $mode =~ ([0-9]+)x([0-9]+)@([0-9.]+) ]]; then
+            local width="${BASH_REMATCH[1]}"
+            local height="${BASH_REMATCH[2]}"
+            local refresh="${BASH_REMATCH[3]}"
+            local pixels=$((width * height))
+
+            # Convert refresh to integer by removing decimal point
+            local refresh_int=$(echo "$refresh" | tr -d '.')
+
+            # Compare: first by resolution (pixels), then by refresh rate
+            if [ $pixels -gt $best_pixels ]; then
+                best_mode="$mode"
+                best_pixels=$pixels
+                best_refresh=$refresh_int
+            elif [ $pixels -eq $best_pixels ] && [ $refresh_int -gt $best_refresh ]; then
+                best_mode="$mode"
+                best_refresh=$refresh_int
             fi
         fi
-    done <<< "$monitor_data"
+    done
 
-    echo -e "$output_lines"
+    echo "$best_mode"
 }
 
-# Generate new monitor configuration
-new_config=$(generate_config)
+# Display detected monitors
+num_monitors="${#CONNECTORS[@]}"
 
-if [ -z "$new_config" ]; then
-    echo -e "${RED}Error: Could not generate monitor configuration${NC}"
-    echo -e "${YELLOW}Debug: Monitor data:${NC}"
-    echo "$monitor_data" | head -20
+if [ "$num_monitors" -eq 0 ]; then
+    echo -e "${RED}Error: No monitors detected${NC}"
     exit 1
 fi
 
 echo -e "${GREEN}Detected monitors:${NC}"
-echo "$monitor_data" | grep "^Output" | sed 's/Output /  - /'
+for i in "${!CONNECTORS[@]}"; do
+    idx=$((i + 1))
+    connector="${CONNECTORS[$i]}"
+    name="${MONITORS[$i]}"
+    best_mode=$(find_best_mode "$connector")
+    echo -e "  ${YELLOW}[$idx]${NC} $connector - $name"
+    echo -e "      Best mode: ${GREEN}$best_mode${NC}"
+done
+
+# Ask for monitor order
+declare -a MONITOR_ORDER
+if [ ! -f "$FIRST_RUN_MARKER" ]; then
+    # First run - use default order (as detected)
+    echo -e "\n${YELLOW}First run: Using default left-to-right order${NC}"
+    for i in "${!CONNECTORS[@]}"; do
+        MONITOR_ORDER+=("$i")
+    done
+else
+    # Ask user for order
+    echo -e "\n${YELLOW}Specify monitor order from left to right${NC}"
+    echo -e "Enter monitor numbers separated by spaces (e.g., '1 3 2' or '2 1 3')"
+    echo -e "Or press Enter to use default order"
+    read -p "Order: " -r user_order
+
+    # Parse user input
+    if [ -z "$user_order" ]; then
+        echo -e "${YELLOW}Using default order${NC}"
+        for i in "${!CONNECTORS[@]}"; do
+            MONITOR_ORDER+=("$i")
+        done
+    else
+        for num in $user_order; do
+            idx=$((num - 1))
+            if [ "$idx" -ge 0 ] && [ "$idx" -lt "$num_monitors" ]; then
+                MONITOR_ORDER+=("$idx")
+            else
+                echo -e "${RED}Error: Invalid monitor number: $num${NC}"
+                exit 1
+            fi
+        done
+
+        if [ "${#MONITOR_ORDER[@]}" -ne "$num_monitors" ]; then
+            echo -e "${RED}Error: You must specify all $num_monitors monitors${NC}"
+            exit 1
+        fi
+    fi
+fi
+
+# Generate configuration with user-specified order
+output_lines=""
+x_position=0
+
+for order_idx in "${MONITOR_ORDER[@]}"; do
+    connector="${CONNECTORS[$order_idx]}"
+    best_mode=$(find_best_mode "$connector")
+
+    if [ -z "$best_mode" ]; then
+        echo -e "${RED}Error: Could not find mode for $connector${NC}"
+        exit 1
+    fi
+
+    # Extract width from mode
+    if [[ $best_mode =~ ([0-9]+)x([0-9]+)@ ]]; then
+        width="${BASH_REMATCH[1]}"
+
+        output_lines+="output \"$connector\" {\n"
+        output_lines+="    mode \"$best_mode\"\n"
+        if [ $x_position -gt 0 ]; then
+            output_lines+="    position x=$x_position y=0\n"
+        fi
+        output_lines+="}\n\n"
+
+        x_position=$((x_position + width))
+    fi
+done
+
+if [ -z "$output_lines" ]; then
+    echo -e "${RED}Error: Could not generate monitor configuration${NC}"
+    exit 1
+fi
 
 # Show what will be configured
 echo -e "\n${GREEN}Generated configuration:${NC}"
-echo -e "$new_config"
+echo -e "$output_lines"
 
-# Ask for confirmation (skip if first run marker doesn't exist)
+# Ask for confirmation
 if [ -f "$FIRST_RUN_MARKER" ]; then
     read -p "Apply this configuration? [Y/n] " -n 1 -r
     echo
@@ -123,7 +222,7 @@ awk -v start="$MONITOR_CONFIG_START" '
 
 # Add new monitor configuration
 echo "" >> "$temp_file"
-echo -e "$new_config" >> "$temp_file"
+echo -e "$output_lines" >> "$temp_file"
 
 # Add everything after monitor config section
 awk -v end="$MONITOR_CONFIG_END" '
