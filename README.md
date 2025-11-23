@@ -39,14 +39,15 @@ The installer will automatically detect your CPU (AMD/Intel) and GPU(s) (NVIDIA/
 The install script will:
 
 1. **Install AUR Helper**: Sets up `paru` if you don't have `paru` or `yay` installed
-2. **Install Official Packages**: Installs packages from official CachyOS/Arch repos (including Niri, Wayland essentials)
+2. **Install Official Packages**: Installs packages from official CachyOS/Arch repos (including Niri, Wayland essentials, SDDM)
 3. **Detect & Install Hardware Drivers**: Automatically detects CPU/GPU and installs appropriate drivers
 4. **Install AUR Packages**: Installs packages from the AUR (including dms-shell-git)
 5. **Install Flatpaks**: Installs flatpak applications from Flathub
 6. **Setup Configs**: Symlinks `.config/niri` to your home directory with full Niri + DMS configuration
+7. **Enable SDDM**: Automatically enables SDDM display manager to start at boot
 
 On first niri login:
-7. **Auto-Configure Monitors**: Automatically detects and configures all connected displays
+8. **Auto-Configure Monitors**: Automatically detects and configures all connected displays
 
 ## File Structure
 
@@ -172,12 +173,14 @@ cd ~/niri-setup
 # - Detect your CPU and GPU(s)
 # - Show you what drivers will be installed
 # - Ask for confirmation before installing
+# - Automatically enable SDDM display manager
 
-# STEP 2: Log out from TTY
-logout
+# STEP 2: Reboot your system
+reboot
 
-# STEP 3: Start Niri session
-# Either from display manager (if installed) or run: niri
+# STEP 3: Select Niri from SDDM
+# SDDM will start automatically
+# Select 'niri' from the session menu
 
 # STEP 4: Monitors configured automatically!
 # On first login, monitors will be detected and configured automatically

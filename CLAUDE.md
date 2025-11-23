@@ -15,11 +15,13 @@ The complete installation follows this sequence:
 3. **Post-Install Script**: The `install.sh` script automatically:
    - Checks for Arch Linux environment (`/etc/arch-release`)
    - Installs AUR helper (paru or yay) if not present
-   - Installs packages from official repos (system-agnostic)
+   - Installs packages from official repos (system-agnostic, including SDDM)
    - **Detects hardware** (CPU: AMD/Intel, GPU: NVIDIA/AMD/Intel) and installs appropriate drivers
    - Installs AUR packages (including DMS) and flatpak applications
    - Creates symlinks from `.config/niri/` to `~/.config/niri`
-4. **Monitor Configuration**: Automatically configured on first niri login (can be re-run with Mod+Shift+M)
+   - **Enables SDDM** display manager to start at boot
+4. **First Boot**: After reboot, SDDM starts automatically - select 'niri' from session menu
+5. **Monitor Configuration**: Automatically configured on first niri login (can be re-run with Mod+Shift+M)
 
 **Configuration Structure:**
 - **Main config**: `.config/niri/config.kdl` - Primary niri configuration (KDL format)

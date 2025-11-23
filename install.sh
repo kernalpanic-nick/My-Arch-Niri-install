@@ -267,6 +267,29 @@ setup_symlinks() {
     echo -e "${GREEN}✓ Linked niri config${NC}"
 }
 
+# Enable SDDM display manager
+enable_sddm() {
+    echo -e "\n${YELLOW}Configuring SDDM display manager...${NC}"
+
+    # Check if sddm is installed
+    if ! command_exists sddm; then
+        echo -e "${YELLOW}SDDM not installed, skipping${NC}"
+        return 0
+    fi
+
+    # Enable sddm service
+    echo -e "${GREEN}Enabling SDDM to start at boot...${NC}"
+    sudo systemctl enable sddm
+
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}✓ SDDM enabled successfully${NC}"
+        echo -e "${YELLOW}SDDM will start automatically on next boot${NC}"
+    else
+        echo -e "${RED}Failed to enable SDDM${NC}"
+        echo -e "${YELLOW}You can enable it manually with: sudo systemctl enable sddm${NC}"
+    fi
+}
+
 # Main installation
 main() {
     echo "This will install niri and related packages, then symlink configs."
@@ -284,13 +307,16 @@ main() {
     install_aur_packages
     install_flatpaks
     setup_symlinks
+    enable_sddm
 
     echo -e "\n${GREEN}=== Installation Complete! ===${NC}"
-    echo -e "\nTo start niri:"
-    echo -e "  1. Log out of your current session"
-    echo -e "  2. Select 'niri' from your display manager"
-    echo -e "  Or run: ${YELLOW}niri${NC} from a TTY"
+    echo -e "\nTo start using niri:"
+    echo -e "  1. Reboot your system"
+    echo -e "  2. SDDM will start automatically"
+    echo -e "  3. Select 'niri' from the session menu"
+    echo -e "\nOr run: ${YELLOW}niri${NC} from a TTY"
     echo -e "\nConfig location: ${YELLOW}~/.config/niri${NC}"
+    echo -e "\nMonitor configuration: Press ${YELLOW}Mod+Shift+M${NC} to configure monitors"
 }
 
 main
