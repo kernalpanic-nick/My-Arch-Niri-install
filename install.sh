@@ -16,7 +16,8 @@
 # - Automatic driver installation with user confirmation
 # - Idempotent - safe to run multiple times
 #
-# IMPORTANT: Configure monitors in .config/niri/config.kdl after installation!
+# NOTE: Monitors will be automatically configured on first niri login!
+#       Use Mod+Shift+M to manually reconfigure monitors anytime.
 #
 
 set -e

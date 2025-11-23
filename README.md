@@ -9,7 +9,8 @@ This setup includes:
 - **14** flatpak applications
 - Complete niri configuration with modular config files (no hardware-specific settings)
 - Limine bootloader with secure boot support
-- Automatic hardware detection and driver installation
+- **Automatic hardware detection** (GPU/CPU drivers)
+- **Automatic monitor configuration** (first-run + manual keybinding)
 
 ## Prerequisites
 
@@ -42,6 +43,9 @@ The install script will:
 4. **Install AUR Packages**: Installs packages from the AUR (including dms-shell-git)
 5. **Install Flatpaks**: Installs flatpak applications from Flathub
 6. **Setup Configs**: Symlinks `.config/niri` to your home directory with full Niri + DMS configuration
+
+On first niri login:
+7. **Auto-Configure Monitors**: Automatically detects and configures all connected displays
 
 ## File Structure
 
@@ -82,6 +86,33 @@ The installation script automatically detects your hardware and installs the app
 
 **Manual Override (if needed):**
 If automatic detection fails or you want manual control, you can edit `packages-hardware.txt` to uncomment specific drivers, and the script will respect your manual selection.
+
+## Automatic Monitor Configuration
+
+The setup includes automatic monitor detection and configuration:
+
+**First Run (Automatic):**
+- On your first niri login, monitors are automatically detected
+- Configuration is generated based on your displays
+- Applied automatically (no confirmation needed on first run)
+
+**Manual Re-configuration (Keybinding):**
+- Press **Mod+Shift+M** to detect and reconfigure monitors anytime
+- Useful when:
+  - Connecting/disconnecting external displays
+  - Changing monitor arrangement
+  - Updating refresh rates
+- Shows what will be configured and asks for confirmation
+
+**What it does:**
+- Detects all connected monitors via `niri msg outputs`
+- Generates appropriate output configuration with correct resolutions and refresh rates
+- Positions monitors side-by-side automatically
+- Backs up your config before applying changes
+- Reloads niri configuration automatically
+
+**Manual Configuration (if needed):**
+If you prefer manual control, you can still edit `~/.config/niri/config.kdl` (lines 9-32) and the auto-configuration will be skipped after first run.
 
 ## Customization
 
@@ -139,18 +170,15 @@ cd ~/niri-setup
 # - Show you what drivers will be installed
 # - Ask for confirmation before installing
 
-# STEP 2: Configure monitor setup (REQUIRED!)
-# The config has NO monitor configuration by default
-# You MUST add your monitor configuration before starting niri
-nano .config/niri/config.kdl
-# See lines 9-32 for examples and instructions
-# You'll configure this after installation when you can run: niri msg outputs
-
-# STEP 3: Log out from TTY
+# STEP 2: Log out from TTY
 logout
 
-# STEP 4: Start Niri session
+# STEP 3: Start Niri session
 # Either from display manager (if installed) or run: niri
+
+# STEP 4: Monitors configured automatically!
+# On first login, monitors will be detected and configured automatically
+# Use Mod+Shift+M anytime to re-detect and reconfigure monitors
 ```
 
 ## Syncing to New Machine
@@ -183,33 +211,20 @@ This setup uses **DMS** (dms-shell-git from AUR) as the desktop shell for Niri:
 
 **Note**: Most keybindings in this config use `dms ipc call` commands. If DMS is not installed, these keybindings won't work.
 
-## Post-Installation Configuration
+## Post-Installation Features
 
-### REQUIRED: Monitor Setup
+### Automatic Monitor Configuration
 
-The niri configuration has **NO monitor configuration by default**. You MUST configure your displays:
+Monitors are configured automatically on first login! No manual configuration needed.
 
-**Before first login** (recommended):
-1. Edit `~/.config/niri/config.kdl` (or `.config/niri/config.kdl` in this repo)
-2. See lines 9-32 for examples and uncomment/modify for your setup
-3. Common single monitor: just uncomment and edit the single monitor example
+**Keybindings:**
+- **Mod+Shift+M**: Detect and reconfigure monitors anytime
+  - Useful when connecting/disconnecting displays
+  - Automatically detects resolution and refresh rate
+  - Positions monitors side-by-side
 
-**After starting Niri** (if you skipped the above):
-1. **Start Niri** (will use default display settings)
-2. **Open a terminal** (Mod+T, usually Super+T)
-3. **Find your monitor names:**
-   ```bash
-   niri msg outputs
-   ```
-4. **Edit the config:**
-   ```bash
-   nano ~/.config/niri/config.kdl
-   ```
-5. **Add your monitor configuration** (see examples in lines 9-32)
-6. **Reload configuration:**
-   ```bash
-   niri msg action reload-config
-   ```
+**Manual configuration (optional):**
+If you prefer to manually configure monitors, edit `~/.config/niri/config.kdl` (lines 9-32).
 
 ### Optional Customizations
 

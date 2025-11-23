@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-This is a CachyOS installation automation repository with Niri window manager configuration. It provides a reproducible setup for CachyOS CLI installations with 202 official packages (system-agnostic), hardware-specific drivers (GPU/CPU automatically detected!), 4 AUR packages (including dms-shell-git), and 14 flatpak applications. The setup uses the Limine bootloader with optional secure boot support. All configurations are hardware-agnostic with no hardcoded monitor settings. Features automatic hardware detection and driver installation.
+This is a CachyOS installation automation repository with Niri window manager configuration. It provides a reproducible setup for CachyOS CLI installations with 202 official packages (system-agnostic), hardware-specific drivers (GPU/CPU automatically detected!), 4 AUR packages (including dms-shell-git), and 14 flatpak applications. The setup uses the Limine bootloader with optional secure boot support. All configurations are hardware-agnostic with no hardcoded settings. Features automatic hardware detection, automatic driver installation, and automatic monitor configuration on first run.
 
 ## Core Architecture
 
@@ -19,7 +19,7 @@ The complete installation follows this sequence:
    - **Detects hardware** (CPU: AMD/Intel, GPU: NVIDIA/AMD/Intel) and installs appropriate drivers
    - Installs AUR packages (including DMS) and flatpak applications
    - Creates symlinks from `.config/niri/` to `~/.config/niri`
-4. **Monitor Configuration**: Add monitor configuration to `.config/niri/config.kdl` (see lines 9-32 for examples)
+4. **Monitor Configuration**: Automatically configured on first niri login (can be re-run with Mod+Shift+M)
 
 **Configuration Structure:**
 - **Main config**: `.config/niri/config.kdl` - Primary niri configuration (KDL format)
@@ -99,11 +99,8 @@ cd ~/niri-setup
 # - Installs all packages (official + AUR + flatpak)
 # - Creates config symlinks (backs up existing ~/.config/niri)
 
-# IMPORTANT: Configure monitors for YOUR setup
-# Config has NO monitor settings by default - you must add them
-nano .config/niri/config.kdl
-# See lines 9-32 for examples and instructions
-# After starting niri, find your monitor names with: niri msg outputs
+# Monitors will be automatically configured on first niri startup!
+# Use Mod+Shift+M to re-detect/reconfigure monitors anytime
 ```
 
 ### Testing Configuration
@@ -183,14 +180,15 @@ If automatic detection fails, you can manually uncomment drivers in `packages-ha
 - Config file: `/boot/limine.conf` (auto-generated, don't edit directly)
 - For secure boot: only sign `/boot/EFI/BOOT/BOOTX64.EFI`, NOT kernel images
 
-**Monitor Configuration (`.config/niri/config.kdl:9-32`):**
-- NO monitor configuration by default - config is completely hardware-agnostic
-- **CRITICAL**: You MUST add monitor configuration before or after starting niri
-- This is a REQUIRED configuration step for all installations
-- See lines 9-32 for examples (single monitor, dual monitor)
-- Find your output names with: `niri msg outputs` (run inside niri session)
-- Uncomment and edit examples, or add your own monitor configuration
-- Reload config with: `niri msg action reload-config`
+**Monitor Configuration (Automatic):**
+- Monitors are **automatically detected and configured** on first niri startup
+- Script runs at startup: `.config/niri/scripts/configure-monitors.sh`
+- Detects all connected monitors via `niri msg outputs`
+- Generates configuration with correct resolutions, refresh rates, and positioning
+- Backups config before applying changes
+- Manual reconfiguration available via **Mod+Shift+M** keybinding
+- Useful for changing display setups, docking/undocking, or updating settings
+- Manual editing still supported in `.config/niri/config.kdl` if preferred
 
 **DMS Integration:**
 - Most keybindings spawn `dms ipc call` commands
@@ -216,11 +214,12 @@ This repo is designed for:
 
 **Important Notes:**
 - Hardware drivers are **automatically detected** - same script works on all machines
-- Monitor configuration must be added to config.kdl for each machine
-- The configuration files are completely hardware-agnostic (no hardcoded monitors)
+- Monitor configuration is **automatically detected** on first niri startup
+- The configuration files are completely hardware-agnostic (no hardcoded settings)
 - The installation script is idempotent - safe to run multiple times
 - System-agnostic packages in `packages-official.txt` can be shared across all machines
 - `packages-hardware.txt` is now a reference file - automatic detection handles driver installation
+- Monitor detection script can be manually triggered with Mod+Shift+M
 
 ## Additional Documentation
 

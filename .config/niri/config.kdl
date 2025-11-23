@@ -141,6 +141,7 @@ spawn-at-startup "dms" "run"
 spawn-at-startup "/usr/lib/mate-polkit/polkit-mate-authentication-agent-1"
 spawn-at-startup "sh" "-c" "eval $(gnome-keyring-daemon --start --components=pkcs11,secrets,ssh) && systemctl --user import-environment GNOME_KEYRING_CONTROL SSH_AUTH_SOCK && dbus-update-activation-environment --systemd GNOME_KEYRING_CONTROL SSH_AUTH_SOCK"
 spawn-at-startup "swayidle" "-w" "timeout" "601" "niri msg action power-off-monitors" "timeout" "600" "swaylock -f" "before-sleep" "swaylock -f"
+spawn-at-startup "bash" "-c" "sleep 2 && $HOME/.config/niri/scripts/configure-monitors.sh"
 environment {
   XDG_CURRENT_DESKTOP "niri"
   QT_QPA_PLATFORM "wayland"
@@ -356,6 +357,11 @@ binds {
     Mod+Shift+E { quit; }
     Ctrl+Alt+Delete hotkey-overlay-title="Task Manager" {
         spawn "dms" "ipc" "call" "processlist" "toggle";
+    }
+
+    // === Monitor Configuration ===
+    Mod+Shift+M hotkey-overlay-title="Detect & Configure Monitors" {
+        spawn "kitty" "-e" "bash" "-c" "$HOME/.config/niri/scripts/configure-monitors.sh; read -p 'Press Enter to close...'";
     }
 
     // === Audio Controls ===
