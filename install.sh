@@ -5,7 +5,7 @@
 # This script installs:
 # - 201 official repository packages (including Niri, Wayland essentials)
 # - Hardware-specific drivers (GPU/CPU, automatically detected!)
-# - 4 AUR packages (including dms-shell-git)
+# - 3 AUR packages (including dms-shell-git)
 # - 14 flatpak applications
 # - Niri window manager configuration with DMS integration (no hardcoded settings)
 #
@@ -15,21 +15,26 @@
 # - Automatic hardware detection (CPU: AMD/Intel, GPU: NVIDIA/AMD/Intel)
 # - Automatic driver installation with user confirmation
 # - Idempotent - safe to run multiple times
+# - Continues on non-critical errors
 #
 # NOTE: Monitors will be automatically configured on first niri login!
 #       Use Mod+Shift+M to manually reconfigure monitors anytime.
 #
 
-set -e
-
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Error tracking
+INSTALL_LOG="$SCRIPT_DIR/install.log"
+FAILED_PACKAGES=()
+WARNINGS=()
 
 echo -e "${GREEN}=== Niri Setup Installer ===${NC}\n"
 
@@ -100,12 +105,29 @@ install_aur_packages() {
         return 0
     fi
 
-    # Read packages, skip comments and empty lines
-    packages=$(grep -v '^#' "$SCRIPT_DIR/packages-aur.txt" | grep -v '^$' | tr '\n' ' ')
+    # Read packages one by one, skip comments and empty lines
+    local aur_count=0
+    local aur_failed=0
 
-    if [ -n "$packages" ]; then
-        echo -e "${GREEN}Installing AUR packages...${NC}"
-        $AUR_HELPER -S --needed --noconfirm $packages
+    while IFS= read -r package; do
+        # Skip empty lines and comments
+        [[ -z "$package" || "$package" =~ ^# ]] && continue
+
+        aur_count=$((aur_count + 1))
+        echo -e "${BLUE}[$aur_count] Installing: $package${NC}"
+
+        if $AUR_HELPER -S --needed --noconfirm "$package" >> "$INSTALL_LOG" 2>&1; then
+            echo -e "${GREEN}✓ $package installed successfully${NC}"
+        else
+            echo -e "${RED}✗ Failed to install $package${NC}"
+            FAILED_PACKAGES+=("$package (AUR)")
+            aur_failed=$((aur_failed + 1))
+        fi
+    done < "$SCRIPT_DIR/packages-aur.txt"
+
+    if [ $aur_failed -gt 0 ]; then
+        echo -e "${YELLOW}Warning: $aur_failed AUR package(s) failed to install${NC}"
+        echo -e "${YELLOW}Check $INSTALL_LOG for details${NC}"
     fi
 }
 
@@ -225,6 +247,7 @@ install_flatpaks() {
 
     if ! command_exists flatpak; then
         echo -e "${YELLOW}Flatpak not installed, skipping flatpak applications${NC}"
+        WARNINGS+=("Flatpak not installed - skipped flatpak applications")
         return 0
     fi
 
@@ -237,12 +260,29 @@ install_flatpaks() {
     flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 
     # Read flatpak IDs, skip comments and empty lines
+    local flatpak_count=0
+    local flatpak_failed=0
+
     while IFS= read -r app; do
-        if [[ ! "$app" =~ ^# ]] && [[ -n "$app" ]]; then
-            echo -e "${GREEN}Installing: $app${NC}"
-            flatpak install -y flathub "$app" || echo -e "${YELLOW}Failed to install $app, continuing...${NC}"
+        # Skip empty lines and comments
+        [[ -z "$app" || "$app" =~ ^# ]] && continue
+
+        flatpak_count=$((flatpak_count + 1))
+        echo -e "${BLUE}[$flatpak_count] Installing: $app${NC}"
+
+        if flatpak install -y flathub "$app" >> "$INSTALL_LOG" 2>&1; then
+            echo -e "${GREEN}✓ $app installed successfully${NC}"
+        else
+            echo -e "${RED}✗ Failed to install $app${NC}"
+            FAILED_PACKAGES+=("$app (flatpak)")
+            flatpak_failed=$((flatpak_failed + 1))
         fi
     done < "$SCRIPT_DIR/flatpaks.txt"
+
+    if [ $flatpak_failed -gt 0 ]; then
+        echo -e "${YELLOW}Warning: $flatpak_failed flatpak(s) failed to install${NC}"
+        echo -e "${YELLOW}Check $INSTALL_LOG for details${NC}"
+    fi
 }
 
 # Create symlinks for config files
@@ -292,6 +332,9 @@ enable_sddm() {
 
 # Main installation
 main() {
+    # Initialize log file
+    echo "Installation started at $(date)" > "$INSTALL_LOG"
+
     echo "This will install niri and related packages, then symlink configs."
     read -p "Continue? [y/N] " -n 1 -r
     echo
@@ -310,13 +353,36 @@ main() {
     enable_sddm
 
     echo -e "\n${GREEN}=== Installation Complete! ===${NC}"
-    echo -e "\nTo start using niri:"
+
+    # Show summary of failures/warnings
+    if [ ${#FAILED_PACKAGES[@]} -gt 0 ]; then
+        echo -e "\n${YELLOW}⚠ Some packages failed to install:${NC}"
+        for pkg in "${FAILED_PACKAGES[@]}"; do
+            echo -e "  ${RED}✗${NC} $pkg"
+        done
+        echo -e "\n${BLUE}Check the log file for details:${NC} $INSTALL_LOG"
+    fi
+
+    if [ ${#WARNINGS[@]} -gt 0 ]; then
+        echo -e "\n${YELLOW}Warnings:${NC}"
+        for warning in "${WARNINGS[@]}"; do
+            echo -e "  ⚠ $warning"
+        done
+    fi
+
+    echo -e "\n${GREEN}Next steps:${NC}"
     echo -e "  1. Reboot your system"
     echo -e "  2. SDDM will start automatically"
     echo -e "  3. Select 'niri' from the session menu"
     echo -e "\nOr run: ${YELLOW}niri${NC} from a TTY"
     echo -e "\nConfig location: ${YELLOW}~/.config/niri${NC}"
     echo -e "\nMonitor configuration: Press ${YELLOW}Mod+Shift+M${NC} to configure monitors"
+
+    # Exit with error code if there were failures
+    if [ ${#FAILED_PACKAGES[@]} -gt 0 ]; then
+        echo -e "\n${YELLOW}Installation completed with errors${NC}"
+        exit 1
+    fi
 }
 
 main
