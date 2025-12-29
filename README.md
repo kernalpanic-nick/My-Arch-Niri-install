@@ -3,15 +3,19 @@
 Easy-to-deploy niri configuration and application setup for CachyOS installations.
 
 This setup includes:
-- **201** official repository packages (system-agnostic)
+- **202** official repository packages (system-agnostic) including greetd
 - **Hardware-specific drivers** (GPU/CPU microcode - automatically detected!)
-- **4** AUR packages (including dms-shell-git)
+- **4** AUR packages (including dms-shell-git and greetd-dms-greeter-git)
 - **14** flatpak applications
-- Complete niri configuration with modular config files (no hardware-specific settings)
+- **greetd + DMS greeter** (beautiful graphical greeter with niri compositor)
+- Complete niri configuration with named workspaces and auto-launched applications
+- **DMS configuration with 6 pre-installed plugins**
+- **11 desktop wallpapers** included
 - Limine bootloader with secure boot support
-- **Automatic hardware detection** (GPU/CPU drivers)
+- **Automatic hardware detection** (GPU/CPU drivers, ASUS laptops)
 - **Automatic monitor configuration** (first-run + manual keybinding)
-- **DMS lock screen** (manual + auto-lock)
+- **Optional hibernation support** (40GB swap file with custom resume hooks)
+- **DMS lock screen** (manual + auto-lock + YubiKey 2FA support)
 
 ## Prerequisites
 
@@ -39,15 +43,19 @@ The installer will automatically detect your CPU (AMD/Intel) and GPU(s) (NVIDIA/
 The install script will:
 
 1. **Install AUR Helper**: Sets up `paru` if you don't have `paru` or `yay` installed
-2. **Install Official Packages**: Installs packages from official CachyOS/Arch repos (including Niri, Wayland essentials, SDDM)
+2. **Install Official Packages**: Installs packages from official CachyOS/Arch repos (including Niri, Wayland essentials, greetd)
 3. **Detect & Install Hardware Drivers**: Automatically detects CPU/GPU and installs appropriate drivers
-4. **Install AUR Packages**: Installs packages from the AUR (including dms-shell-git)
+4. **Install AUR Packages**: Installs packages from the AUR (including dms-shell-git, greetd-dms-greeter-git)
 5. **Install Flatpaks**: Installs flatpak applications from Flathub
-6. **Setup Configs**: Symlinks `.config/niri` to your home directory with full Niri + DMS configuration
-7. **Enable SDDM**: Automatically enables SDDM display manager to start at boot
+6. **Configure greetd**: Sets up greetd with DMS greeter for beautiful graphical login
+7. **Setup Configs**: Symlinks `.config/niri` to your home directory with full Niri + DMS configuration
+8. **Deploy DMS Configuration**: Copies DMS settings and pre-installed plugins
+9. **Deploy Wallpapers**: Copies 11 desktop wallpapers to ~/Pictures/Wallpaper
+10. **ASUS Laptop Support** (optional): Auto-detects ASUS laptops and offers to install asusctl, rog-control-center
+11. **Hibernation Setup** (optional): Prompts to configure hibernation with 40GB swap file
 
 On first niri login:
-8. **Auto-Configure Monitors**: Automatically detects and configures all connected displays
+12. **Auto-Configure Monitors**: Automatically detects and configures all connected displays
 
 ## File Structure
 
@@ -59,18 +67,32 @@ On first niri login:
 ├── packages-aur.txt          # AUR packages (4 packages)
 ├── flatpaks.txt              # Flatpak applications (14 apps)
 ├── .config/
-│   └── niri/
-│       ├── config.kdl        # Main niri configuration (generic, no hardcoded monitors)
-│       ├── scripts/
-│       │   └── configure-monitors.sh  # Automatic monitor configuration
-│       └── dms/              # Modular config files
-│           ├── binds.kdl
-│           ├── colors.kdl
-│           ├── layout.kdl
-│           └── wpblur.kdl
-├── CLAUDE.md                 # Repository guidance for AI assistants
-├── SECURE_BOOT.md            # Detailed secure boot setup guide
-└── README.md                 # This file
+│   ├── niri/
+│   │   ├── config.kdl        # Main niri configuration with named workspaces
+│   │   ├── scripts/
+│   │   │   └── configure-monitors.sh  # Automatic monitor configuration
+│   │   └── dms/              # Modular config files
+│   │       ├── alttab.kdl    # Alt-tab window switcher styling
+│   │       ├── binds.kdl     # DMS keybindings
+│   │       ├── colors.kdl    # Color scheme
+│   │       ├── layout.kdl    # Layout settings
+│   │       └── wpblur.kdl    # Wallpaper blur rules
+│   └── DankMaterialShell/    # DMS configuration
+│       ├── settings.json     # DMS settings (sanitized)
+│       ├── plugin_settings.json  # Plugin configuration
+│       └── plugins/          # 6 pre-installed plugins
+├── etc/                      # System configuration templates
+│   ├── greetd/              # greetd configuration
+│   ├── asusd/               # ASUS laptop configuration
+│   ├── systemd/             # Power management & hibernation config
+│   └── initcpio/            # Custom hibernation resume hooks
+├── scripts/
+│   └── setup-hibernation.sh  # Optional hibernation setup script
+├── wallpapers/              # 11 desktop wallpapers (6MB)
+├── CLAUDE.md                # Repository guidance for AI assistants
+├── SECURE_BOOT.md           # Detailed secure boot setup guide
+├── TROUBLESHOOTING.md       # Troubleshooting guide
+└── README.md                # This file
 ```
 
 ## Automatic Hardware Detection
@@ -173,14 +195,15 @@ cd ~/niri-setup
 # - Detect your CPU and GPU(s)
 # - Show you what drivers will be installed
 # - Ask for confirmation before installing
-# - Automatically enable SDDM display manager
+# - Configure greetd with DMS greeter
+# - Optionally set up hibernation and ASUS laptop support
 
 # STEP 2: Reboot your system
 reboot
 
-# STEP 3: Select Niri from SDDM
-# SDDM will start automatically
-# Select 'niri' from the session menu
+# STEP 3: greetd with DMS greeter starts automatically
+# Beautiful graphical login screen powered by DMS and niri
+# Simply log in and niri will start
 
 # STEP 4: Monitors configured automatically!
 # On first login, monitors will be detected and configured automatically
@@ -199,6 +222,39 @@ The script will:
 - Skip packages already installed
 - Update symlinks if needed
 - Backup existing configs before replacing
+
+## Optional Features
+
+### Hibernation Support
+
+The installer offers optional hibernation setup with:
+- **40GB swap file** on btrfs subvolume
+- **Custom initramfs hooks** for reliable resume from encrypted swap
+- **Suspend-then-hibernate** (2 hour delay)
+- **Lid closure integration**
+- **Power management** optimized for laptops
+
+**Requirements**: LUKS encryption, Limine bootloader, 40GB+ free disk space
+
+To set up hibernation later:
+```bash
+sudo ~/niri-setup/scripts/setup-hibernation.sh
+```
+
+### ASUS Laptop Support
+
+The installer auto-detects ASUS ROG laptops and offers to install:
+- **asusctl** - ASUS control utility (RGB keyboard, fan profiles, etc.)
+- **rog-control-center** - GUI for ASUS settings
+- **supergfxctl** - GPU switching control
+
+Includes pre-configured settings for optimal power management and RGB control via `Mod+F4` keybinding.
+
+### Desktop Wallpapers
+
+11 high-quality wallpapers (6MB total) are included and deployed to `~/Pictures/Wallpaper/`.
+
+**Browse wallpapers**: Press `Mod+Y` to open the DMS wallpaper browser and select from the included wallpapers or add your own.
 
 ## DMS (DankMaterialShell) Integration
 
@@ -219,7 +275,12 @@ This setup uses **DMS** (dms-shell-git from AUR) as the desktop shell for Niri:
 - **Before Sleep**: Automatically locks before system suspend/sleep
 - Managed by `swayidle` + DMS lock integration
 
-**Auto-startup**: DMS is configured to start automatically in `config.kdl:140` via `spawn-at-startup "dms" "run"`
+**Auto-startup**: DMS is managed by systemd user service (dms.service) for reliable startup
+
+**DMS Configuration**: The installer deploys:
+- Sanitized settings.json with recommended defaults
+- 6 pre-installed plugins (asusControlCenter, calculator, commandRunner, etc.)
+- Plugin configuration ready to use
 
 **Note**: Most keybindings in this config use `dms ipc call` commands. If DMS is not installed, these keybindings won't work.
 

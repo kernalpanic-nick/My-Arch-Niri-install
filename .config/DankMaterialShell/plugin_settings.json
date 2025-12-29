@@ -1,0 +1,28 @@
+{
+  "asusControlCenter": {
+    "enabled": true
+  },
+  "dankBatteryAlerts": {
+    "enabled": true,
+    "criticalThreshold": 20,
+    "warningThreshold": 30
+  },
+  "displaySettings": {
+    "enabled": true
+  },
+  "grimblast": {
+    "enabled": true
+  },
+  "powerUsagePlugin": {
+    "enabled": true
+  },
+  "calculator": {
+    "enabled": true
+  },
+  "commandRunner": {
+    "enabled": true
+  },
+  "niriWindows": {
+    "enabled": true
+  }
+}

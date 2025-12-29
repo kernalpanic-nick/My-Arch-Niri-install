@@ -1,4 +1,5 @@
 dms-shell-git
+greetd-dms-greeter-git
 opcode-bin
 # python-dlib  # DISABLED: Fails to build with GCC 15.2.1 (compilation warnings treated as errors)
 visual-studio-code-bin

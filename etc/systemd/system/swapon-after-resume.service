@@ -1,0 +1,13 @@
+[Unit]
+Description=Activate swap after hibernation resume
+After=systemd-hibernate-resume.service
+Before=swap.target
+DefaultDependencies=no
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/swapon /swap/swapfile
+RemainAfterExit=yes
+
+[Install]
+WantedBy=swap.target

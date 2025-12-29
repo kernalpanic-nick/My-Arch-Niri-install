@@ -1,0 +1,15 @@
+#!/bin/bash
+# Installation hook for manual resume
+
+build() {
+    add_runscript
+}
+
+help() {
+    cat <<HELPEOF
+This hook provides hibernation resume support, bypassing systemd-hibernate-resume
+to directly control /sys/power/resume in the initramfs.
+HELPEOF
+}
+
+# vim: set ft=sh ts=4 sw=4 et:

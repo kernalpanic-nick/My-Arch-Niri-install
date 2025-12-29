@@ -255,3 +255,372 @@ If you encounter issues:
 3. Ensure all prerequisites are met
 4. Try re-running the script (it's idempotent)
 5. Report issues on GitHub with log file attached
+
+## greetd Display Manager Issues
+
+### greetd Service Won't Start
+
+**Symptoms**:
+- System boots to TTY instead of graphical greeter
+- `systemctl status greetd` shows failed or inactive
+
+**Checks**:
+```bash
+# Check greetd service status
+systemctl status greetd
+
+# Check greetd logs
+journalctl -u greetd -b
+
+# Verify greetd configuration
+cat /etc/greetd/config.toml
+
+# Check if greeter user exists
+id greeter
+```
+
+**Common Fixes**:
+1. **Greeter user doesn't exist**:
+   ```bash
+   sudo useradd -M -G video greeter
+   sudo systemctl restart greetd
+   ```
+
+2. **Configuration file missing**:
+   ```bash
+   sudo cp ~/niri-setup/etc/greetd/config.toml /etc/greetd/
+   sudo systemctl restart greetd
+   ```
+
+3. **DMS greeter not installed**:
+   ```bash
+   paru -S greetd-dms-greeter-git
+   sudo systemctl restart greetd
+   ```
+
+### DMS Greeter Shows Black Screen
+
+**Checks**:
+```bash
+# Check if niri is installed
+which niri
+
+# Check DMS greeter logs
+journalctl -u greetd -b | grep dms-greeter
+
+# Verify video group membership
+groups greeter | grep video
+```
+
+**Fix**:
+```bash
+# Add greeter to video group if missing
+sudo usermod -a -G video greeter
+sudo systemctl restart greetd
+```
+
+## Hibernation Issues
+
+### Hibernation Not Available
+
+**Symptoms**:
+- `systemctl hibernate` fails
+- `/sys/power/state` doesn't include "disk"
+
+**Checks**:
+```bash
+# Check if resume device is set
+cat /sys/power/resume  # Should show major:minor (e.g., 253:0), NOT 0:0
+
+# Check resume offset
+cat /sys/power/resume_offset  # Should show swap file offset
+
+# Check available power states
+cat /sys/power/state  # Should include: freeze mem disk
+
+# Check boot parameters
+cat /proc/cmdline | grep resume
+
+# Check swap status
+swapon --show
+
+# Check if resume-manual hook is in initramfs
+lsinitcpio /boot/initramfs-linux-cachyos.img | grep resume-manual
+```
+
+**Common Fixes**:
+
+1. **Resume device not set** (`/sys/power/resume` shows `0:0`):
+   - Run hibernation setup script again:
+     ```bash
+     sudo ~/niri-setup/scripts/setup-hibernation.sh
+     ```
+   - Reboot to load new initramfs
+
+2. **Swap file not created**:
+   ```bash
+   # Verify swap file exists
+   ls -lh /swap/swapfile
+   # Should be 40GB, owned by root with 600 permissions
+   ```
+
+3. **Resume hook missing from initramfs**:
+   ```bash
+   # Check mkinitcpio.conf
+   grep "^HOOKS=" /etc/mkinitcpio.conf | grep resume-manual
+   # Should include resume-manual after encrypt hook
+   
+   # If missing, regenerate initramfs
+   sudo mkinitcpio -P
+   ```
+
+### Hibernation Image Not Found on Resume
+
+**Symptoms**:
+- System hibernates successfully
+- On boot, system doesn't resume (normal boot instead)
+- Kernel log shows "PM: Image not found (code -16)"
+
+**Root Cause**: Swap activated too early, destroying hibernation image
+
+**Checks**:
+```bash
+# Check if swap is marked as noauto in fstab
+grep swap /etc/fstab  # Should show "noauto"
+
+# Check if swapon-after-resume service exists and is enabled
+systemctl status swapon-after-resume.service
+
+# Check boot logs for swap activation
+journalctl -b | grep -i "swap\|hibernat"
+```
+
+**Fix**:
+```bash
+# Ensure swap is noauto in fstab
+sudo sed -i 's|/swap/swapfile.*|/swap/swapfile none swap noauto 0 0|' /etc/fstab
+
+# Create and enable swapon-after-resume service
+sudo cp ~/niri-setup/etc/systemd/system/swapon-after-resume.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable swapon-after-resume.service
+
+# Reboot and test again
+```
+
+### Test Hibernation
+
+After fixing issues, test hibernation:
+
+```bash
+# 1. Save all work and close applications
+
+# 2. Hibernate
+systemctl hibernate
+
+# 3. Power on system
+
+# 4. Check if session resumed
+# - All applications should still be open
+# - Terminal history preserved
+# - No login prompt (direct resume)
+
+# 5. Verify logs
+journalctl -b -1 | grep -i "hibernat\|resume"
+```
+
+## ASUS Laptop Issues
+
+### asusctl Service Won't Start
+
+**Checks**:
+```bash
+# Check asusd service status
+systemctl status asusd
+
+# Check logs
+journalctl -u asusd -b
+
+# Verify asusctl is installed
+which asusctl
+asusctl --version
+```
+
+**Common Fixes**:
+1. **Service not enabled**:
+   ```bash
+   sudo systemctl enable --now asusd
+   ```
+
+2. **Configuration issues**:
+   ```bash
+   # Reset to default config
+   sudo cp ~/niri-setup/etc/asusd/asusd.ron /etc/asusd/
+   sudo systemctl restart asusd
+   ```
+
+### RGB Keyboard Controls Not Working
+
+**Symptoms**:
+- `Mod+F4` doesn't cycle RGB modes
+- `asusctl` commands fail
+
+**Checks**:
+```bash
+# Test asusctl manually
+asusctl aura -n
+
+# Check if asusd is running
+systemctl status asusd
+
+# Check device permissions
+ls -l /sys/class/leds/
+```
+
+**Fix**:
+```bash
+# Restart asusd service
+sudo systemctl restart asusd
+
+# Test RGB control
+asusctl aura static -c ff0000  # Should show red
+
+# If still not working, check dmesg for errors
+dmesg | grep -i asus
+```
+
+### ROG Control Center Won't Launch
+
+**Checks**:
+```bash
+# Verify installation
+which rog-control-center
+
+# Try launching from terminal to see errors
+rog-control-center
+
+# Check dependencies
+paru -Q rog-control-center
+```
+
+**Fix**:
+```bash
+# Reinstall if needed
+paru -S rog-control-center
+
+# Ensure asusd is running
+sudo systemctl start asusd
+```
+
+## DMS Plugin Issues
+
+### Plugins Not Loading
+
+**Symptoms**:
+- Plugins don't appear in DMS bar
+- Plugin settings show as disabled
+
+**Checks**:
+```bash
+# Verify plugins directory
+ls -la ~/.config/DankMaterialShell/plugins/
+
+# Check plugin_settings.json
+cat ~/.config/DankMaterialShell/plugin_settings.json
+
+# Check DMS logs
+journalctl --user -u dms -b
+```
+
+**Fix**:
+```bash
+# Re-deploy DMS configuration
+cp -r ~/niri-setup/.config/DankMaterialShell/* ~/.config/DankMaterialShell/
+
+# Restart DMS
+systemctl --user restart dms
+```
+
+### ASUS Control Center Plugin Not Working
+
+**Specific to asusControlCenter plugin**:
+
+**Checks**:
+```bash
+# Verify asusd is running
+systemctl status asusd
+
+# Check plugin exists
+ls ~/.config/DankMaterialShell/plugins/asusControlCenter/
+
+# Ensure plugin is enabled
+grep -A2 asusControlCenter ~/.config/DankMaterialShell/plugin_settings.json
+```
+
+**Fix**:
+```bash
+# Enable plugin if disabled
+# Edit ~/.config/DankMaterialShell/plugin_settings.json
+# Set "asusControlCenter": { "enabled": true }
+
+# Restart DMS
+systemctl --user restart dms
+```
+
+## General Debugging Commands
+
+### Check All Critical Services
+
+```bash
+# Display manager
+systemctl status greetd
+
+# Niri compositor
+systemctl --user status niri
+
+# DMS shell
+systemctl --user status dms
+
+# ASUS control (if ASUS laptop)
+systemctl status asusd
+```
+
+### View Recent Logs
+
+```bash
+# System boot log
+journalctl -b
+
+# Specific service logs
+journalctl -u greetd -b
+journalctl --user -u niri -b
+journalctl --user -u dms -b
+journalctl -u asusd -b
+
+# Hibernation/resume logs
+journalctl -b | grep -i "hibernat\|resume"
+```
+
+### Configuration Files to Check
+
+```bash
+# greetd
+/etc/greetd/config.toml
+
+# Niri
+~/.config/niri/config.kdl
+
+# DMS
+~/.config/DankMaterialShell/settings.json
+~/.config/DankMaterialShell/plugin_settings.json
+
+# ASUS
+/etc/asusd/asusd.ron
+
+# Hibernation
+/etc/fstab (swap noauto)
+/etc/mkinitcpio.conf (resume-manual hook)
+/boot/limine.conf (resume parameters)
+/etc/systemd/logind.conf.d/power-management.conf
+/etc/systemd/sleep.conf.d/hibernate-delay.conf
+```

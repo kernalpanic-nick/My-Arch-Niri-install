@@ -1,0 +1,48 @@
+#!/usr/bin/ash
+# Manual resume hook that bypasses systemd-hibernate-resume
+# and directly sets /sys/power/resume
+
+run_hook() {
+    local resumedev resume rootdelay resume_offset
+
+    # Check for noresume parameter
+    noresume="$(getarg noresume)"
+    if [ -n "$noresume" ]; then
+        return 0
+    fi
+
+    # Get resume device and offset from kernel parameters
+    resume="$(getarg resume)"
+    resume_offset="$(getarg resume_offset)"
+
+    if [ -z "$resume" ]; then
+        return 0
+    fi
+
+    if [ ! -e /sys/power/resume ]; then
+        err 'resume: no hibernation support found'
+        return 1
+    fi
+
+    # Wait for device to be ready
+    rootdelay="$(getarg rootdelay)"
+    if resumedev="$(resolve_device "$resume" "$rootdelay")"; then
+        # Get major:minor numbers
+        # shellcheck disable=SC3001
+        read -r major minor < <(stat -Lc '0x%t 0x%T' "$resumedev")
+
+        # Set resume_offset if provided
+        if [ -n "$resume_offset" ] && [ -e /sys/power/resume_offset ]; then
+            printf '%s' "$resume_offset" > /sys/power/resume_offset
+        fi
+
+        # Trigger resume by writing to /sys/power/resume
+        printf '%d:%d' "$major" "$minor" > /sys/power/resume
+        return 0
+    fi
+
+    err "resume: hibernation device '$resume' not found"
+    return 1
+}
+
+# vim: set ft=sh ts=4 sw=4 et:

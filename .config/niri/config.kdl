@@ -6,29 +6,19 @@ config-notification {
     disable-failed
 }
 
+// === NAMED WORKSPACES ===
+workspace "browser"
+workspace "dev"
+workspace "chat"
+
 // === OUTPUT CONFIGURATION ===
-// IMPORTANT: Configure your monitors here!
-//
-// 1. Start niri and open a terminal (Mod+T)
-// 2. Run: niri msg outputs
-// 3. Note your monitor names, resolutions, and preferred refresh rates
-// 4. Uncomment and configure the examples below for YOUR setup
-//
-// Example single monitor:
-// output "eDP-1" {
-//     mode "1920x1080@60.000"
-// }
-//
-// Example dual monitor setup:
-// output "DP-1" {
-//     mode "2560x1440@144.000"
-//     position x=0 y=0
-// }
-// output "HDMI-1" {
-//     mode "1920x1080@60.000"
-//     position x=2560 y=0
-// }
-//
+
+output "eDP-2" {
+    mode "2560x1600@120.000"
+    position x=0 y=0
+}
+
+
 // See: https://github.com/YaLTeR/niri/wiki/Configuration:-Outputs
 
 gestures {
@@ -41,12 +31,19 @@ gestures {
 // Find the full list of options on the wiki:
 // https://github.com/YaLTeR/niri/wiki/Configuration:-Input
 input {
+    mod-key "Super"
+    mod-key-nested "Alt"
+
     keyboard {
         xkb {
         }
         numlock
     }
     touchpad {
+        natural-scroll
+        scroll-factor 3
+        tap
+        dwt
     }
     mouse {
     }
@@ -137,11 +134,22 @@ overview {
 // See the binds section below for more spawn examples.
 // This line starts waybar, a commonly used bar for Wayland compositors.
 spawn-at-startup "bash" "-c" "wl-paste --watch cliphist store &"
-spawn-at-startup "dms" "run"
+spawn-at-startup "udiskie" "--tray" "--notify"
 spawn-at-startup "/usr/lib/mate-polkit/polkit-mate-authentication-agent-1"
-spawn-at-startup "sh" "-c" "eval $(gnome-keyring-daemon --start --components=pkcs11,secrets,ssh) && systemctl --user import-environment GNOME_KEYRING_CONTROL SSH_AUTH_SOCK && dbus-update-activation-environment --systemd GNOME_KEYRING_CONTROL SSH_AUTH_SOCK"
-spawn-at-startup "swayidle" "-w" "timeout" "601" "niri msg action power-off-monitors" "timeout" "600" "dms ipc call lock lock" "before-sleep" "dms ipc call lock lock"
+spawn-at-startup "dbus-update-activation-environment" "--systemd" "--all"
+spawn-at-startup "gnome-keyring-daemon" "--start" "--components=pkcs11,secrets,ssh"
+// DMS is now started via systemd user service (dms.service) instead of spawn-at-startup
+spawn-at-startup "swayidle" "-w" "timeout" "900" "dms ipc call lock lock" "timeout" "1200" "niri msg action power-off-monitors" "timeout" "1800" "systemctl suspend-then-hibernate" "resume" "niri msg action power-on-monitors" "before-sleep" "dms ipc call lock lock"
 spawn-at-startup "bash" "-c" "sleep 2 && $HOME/.config/niri/scripts/configure-monitors.sh"
+
+// === Auto-start Applications ===
+spawn-at-startup "vivaldi-stable"
+spawn-at-startup "flatpak" "run" "me.proton.Mail"
+spawn-at-startup "kitty"
+spawn-at-startup "zed"
+spawn-at-startup "flatpak" "run" "org.signal.Signal"
+spawn-at-startup "discord"
+
 environment {
   XDG_CURRENT_DESKTOP "niri"
   QT_QPA_PLATFORM "wayland"
@@ -149,6 +157,7 @@ environment {
   QT_QPA_PLATFORMTHEME "gtk3"
   QT_QPA_PLATFORMTHEME_QT6 "gtk3"
   TERMINAL "kitty"
+  EDITOR "nvim"
 }
 hotkey-overlay {
     skip-at-startup
@@ -271,6 +280,12 @@ window-rule {
     opacity 0.9
 }
 
+// Keep Jellyfin Media Player always fully opaque
+window-rule {
+    match app-id="com.github.iwalton3.jellyfin-media-player"
+    opacity 1.0
+}
+
 // Split PiP and zoom
 window-rule {
     match app-id=r#"firefox$"# title="^Picture-in-Picture$"
@@ -324,6 +339,38 @@ window-rule {
     match title=r#"^Bitwarden"#
     open-floating true
 }
+
+// === Workspace Assignments ===
+// Browser workspace
+window-rule {
+    match at-startup=true app-id=r#"^vivaldi-stable$"#
+    open-on-workspace "browser"
+}
+window-rule {
+    match at-startup=true app-id=r#"^me\.proton\.Mail$"#
+    open-on-workspace "browser"
+}
+
+// Dev workspace
+window-rule {
+    match at-startup=true app-id=r#"^kitty$"#
+    open-on-workspace "dev"
+}
+window-rule {
+    match at-startup=true app-id=r#"^dev\.zed\.Zed$"#
+    open-on-workspace "dev"
+}
+
+// Chat workspace
+window-rule {
+    match at-startup=true app-id=r#"^org\.signal\.Signal$"#
+    open-on-workspace "chat"
+}
+window-rule {
+    match at-startup=true app-id=r#"^discord$"#
+    open-on-workspace "chat"
+}
+
 binds {
     // === System & Overview ===
     Mod+D { spawn "niri" "msg" "action" "toggle-overview"; }
@@ -350,9 +397,12 @@ binds {
     Mod+N hotkey-overlay-title="Notification Center" { spawn "dms" "ipc" "call" "notifications" "toggle"; }
     Mod+Shift+N hotkey-overlay-title="Notepad" { spawn "dms" "ipc" "call" "notepad" "toggle"; }
 
-    // === Security ===
+    // === Security & Power ===
     Mod+Alt+L hotkey-overlay-title="Lock Screen" {
         spawn "dms" "ipc" "call" "lock" "lock";
+    }
+    Mod+Alt+P hotkey-overlay-title="Power Menu" {
+        spawn "dms" "ipc" "call" "powermenu" "open";
     }
     Mod+Shift+E { quit; }
     Ctrl+Alt+Delete hotkey-overlay-title="Task Manager" {
@@ -384,6 +434,20 @@ binds {
     }
     XF86MonBrightnessDown allow-when-locked=true {
        spawn "dms" "ipc" "call" "brightness" "decrement" "5" "";
+    }
+
+    // === RGB/Aura Controls ===
+    // ASUS ROG keyboard backlight controls (Fn+F2/F3)
+    XF86KbdBrightnessDown allow-when-locked=true {
+        spawn "asusctl" "-p";
+    }
+    XF86KbdBrightnessUp allow-when-locked=true {
+        spawn "asusctl" "-n";
+    }
+    // RGB mode cycling (Fn+F4) - handled by asusd automatically
+    // If not working, try: Mod+F4 as workaround
+    Mod+F4 hotkey-overlay-title="Cycle RGB Mode" {
+        spawn "asusctl" "aura" "-n";
     }
 
     // === Window Management ===

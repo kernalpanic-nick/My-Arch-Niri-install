@@ -147,7 +147,8 @@ ripgrep
 rsync
 rtkit
 sbctl
-sddm
+greetd
+greetd-tuigreet
 seahorse
 sg3_utils
 smartmontools

@@ -307,26 +307,170 @@ setup_symlinks() {
     echo -e "${GREEN}✓ Linked niri config${NC}"
 }
 
-# Enable SDDM display manager
-enable_sddm() {
-    echo -e "\n${YELLOW}Configuring SDDM display manager...${NC}"
+# Enable greetd display manager with DMS greeter
+enable_greetd() {
+    echo -e "\n${YELLOW}Configuring greetd display manager with DMS greeter...${NC}"
 
-    # Check if sddm is installed
-    if ! command_exists sddm; then
-        echo -e "${YELLOW}SDDM not installed, skipping${NC}"
+    # Check if greetd is installed
+    if ! command_exists greetd; then
+        echo -e "${YELLOW}greetd not installed, skipping${NC}"
         return 0
     fi
 
-    # Enable sddm service
-    echo -e "${GREEN}Enabling SDDM to start at boot...${NC}"
-    sudo systemctl enable sddm
+    # Create greetd config directory
+    sudo mkdir -p /etc/greetd
+
+    # Copy greetd configuration
+    if [ -f "$SCRIPT_DIR/etc/greetd/config.toml" ]; then
+        sudo cp "$SCRIPT_DIR/etc/greetd/config.toml" /etc/greetd/
+        echo -e "${GREEN}✓ Copied greetd configuration${NC}"
+    fi
+
+    if [ -f "$SCRIPT_DIR/etc/greetd/regreet.toml" ]; then
+        sudo cp "$SCRIPT_DIR/etc/greetd/regreet.toml" /etc/greetd/
+        echo -e "${GREEN}✓ Copied regreet configuration${NC}"
+    fi
+
+    # Create greeter user if it doesn't exist
+    if ! id -u greeter >/dev/null 2>&1; then
+        sudo useradd -M -G video greeter
+        echo -e "${GREEN}✓ Created greeter user${NC}"
+    fi
+
+    # Enable greetd service
+    echo -e "${GREEN}Enabling greetd to start at boot...${NC}"
+    sudo systemctl enable greetd
 
     if [ $? -eq 0 ]; then
-        echo -e "${GREEN}✓ SDDM enabled successfully${NC}"
-        echo -e "${YELLOW}SDDM will start automatically on next boot${NC}"
+        echo -e "${GREEN}✓ greetd enabled successfully${NC}"
+        echo -e "${YELLOW}greetd will start automatically on next boot${NC}"
     else
-        echo -e "${RED}Failed to enable SDDM${NC}"
-        echo -e "${YELLOW}You can enable it manually with: sudo systemctl enable sddm${NC}"
+        echo -e "${RED}Failed to enable greetd${NC}"
+        echo -e "${YELLOW}You can enable it manually with: sudo systemctl enable greetd${NC}"
+    fi
+}
+
+# Deploy DMS configuration
+deploy_dms_config() {
+    echo -e "\n${YELLOW}Deploying DMS configuration...${NC}"
+
+    # Create DMS config directory
+    mkdir -p "$HOME/.config/DankMaterialShell/plugins"
+
+    # Copy settings.json
+    if [ -f "$SCRIPT_DIR/.config/DankMaterialShell/settings.json" ]; then
+        cp "$SCRIPT_DIR/.config/DankMaterialShell/settings.json" "$HOME/.config/DankMaterialShell/"
+        echo -e "${GREEN}✓ Copied DMS settings${NC}"
+    fi
+
+    # Copy plugin_settings.json
+    if [ -f "$SCRIPT_DIR/.config/DankMaterialShell/plugin_settings.json" ]; then
+        cp "$SCRIPT_DIR/.config/DankMaterialShell/plugin_settings.json" "$HOME/.config/DankMaterialShell/"
+        echo -e "${GREEN}✓ Copied DMS plugin settings${NC}"
+    fi
+
+    # Copy plugins
+    if [ -d "$SCRIPT_DIR/.config/DankMaterialShell/plugins" ]; then
+        cp -r "$SCRIPT_DIR/.config/DankMaterialShell/plugins/"* "$HOME/.config/DankMaterialShell/plugins/" 2>/dev/null
+        echo -e "${GREEN}✓ Copied DMS plugins${NC}"
+    fi
+}
+
+# Deploy wallpapers
+deploy_wallpapers() {
+    echo -e "\n${YELLOW}Deploying desktop wallpapers...${NC}"
+
+    # Create wallpaper directory
+    mkdir -p "$HOME/Pictures/Wallpaper"
+
+    # Copy wallpapers if they exist
+    if [ -d "$SCRIPT_DIR/wallpapers" ]; then
+        cp "$SCRIPT_DIR/wallpapers/"*.jpg "$HOME/Pictures/Wallpaper/" 2>/dev/null
+        wallpaper_count=$(ls "$SCRIPT_DIR/wallpapers/"*.jpg 2>/dev/null | wc -l)
+        if [ "$wallpaper_count" -gt 0 ]; then
+            echo -e "${GREEN}✓ Copied $wallpaper_count wallpapers${NC}"
+            echo -e "${YELLOW}Use Mod+Y to browse wallpapers in DMS${NC}"
+        fi
+    fi
+}
+
+# Detect ASUS laptop
+detect_asus_laptop() {
+    if [ -f /sys/class/dmi/id/sys_vendor ]; then
+        vendor=$(cat /sys/class/dmi/id/sys_vendor)
+        if [[ "$vendor" == *"ASUS"* ]]; then
+            echo "asus"
+        else
+            echo "none"
+        fi
+    else
+        echo "none"
+    fi
+}
+
+# Install ASUS packages
+install_asus_packages() {
+    local laptop_type=$(detect_asus_laptop)
+
+    if [ "$laptop_type" = "asus" ]; then
+        echo -e "\n${GREEN}ASUS laptop detected!${NC}"
+        echo -e "${YELLOW}Install ASUS-specific packages (asusctl, rog-control-center, supergfxctl)?${NC}"
+        read -p "Continue? [Y/n] " -n 1 -r
+        echo
+
+        if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+            echo -e "${GREEN}Installing ASUS packages...${NC}"
+
+            # Install from official repos
+            sudo pacman -S --needed --noconfirm asusctl rog-control-center supergfxctl
+
+            # Enable asusd service
+            sudo systemctl enable asusd
+
+            # Copy ASUS configuration if available
+            if [ -f "$SCRIPT_DIR/etc/asusd/asusd.ron" ]; then
+                echo -e "${YELLOW}Copy ASUS configuration template?${NC}"
+                read -p "Continue? [y/N] " -n 1 -r
+                echo
+
+                if [[ $REPLY =~ ^[Yy]$ ]]; then
+                    sudo cp "$SCRIPT_DIR/etc/asusd/asusd.ron" /etc/asusd/
+                    echo -e "${GREEN}✓ Copied ASUS configuration${NC}"
+                fi
+            fi
+
+            echo -e "${GREEN}✓ ASUS packages installed and configured${NC}"
+        fi
+    fi
+}
+
+# Prompt for hibernation setup
+setup_hibernation_prompt() {
+    echo -e "\n${YELLOW}=== Hibernation Setup ===${NC}"
+    echo "Do you want to set up hibernation support?"
+    echo ""
+    echo -e "${RED}WARNING: This requires:${NC}"
+    echo "  • LUKS-encrypted root filesystem"
+    echo "  • Limine bootloader"
+    echo "  • 40GB+ free disk space"
+    echo "  • btrfs filesystem (recommended)"
+    echo ""
+    echo "This will create a 40GB swap file and modify boot configuration."
+    echo ""
+    read -p "Continue with hibernation setup? [y/N] " -n 1 -r
+    echo
+
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        if [ -f "$SCRIPT_DIR/scripts/setup-hibernation.sh" ]; then
+            echo -e "${GREEN}Running hibernation setup script...${NC}"
+            sudo "$SCRIPT_DIR/scripts/setup-hibernation.sh"
+        else
+            echo -e "${RED}Error: Hibernation setup script not found${NC}"
+            echo "Expected: $SCRIPT_DIR/scripts/setup-hibernation.sh"
+        fi
+    else
+        echo -e "${YELLOW}Skipping hibernation setup${NC}"
+        echo "You can run it manually later: sudo $SCRIPT_DIR/scripts/setup-hibernation.sh"
     fi
 }
 
@@ -349,8 +493,12 @@ main() {
     install_hardware_packages
     install_aur_packages
     install_flatpaks
+    enable_greetd
     setup_symlinks
-    enable_sddm
+    deploy_dms_config
+    deploy_wallpapers
+    install_asus_packages
+    setup_hibernation_prompt
 
     echo -e "\n${GREEN}=== Installation Complete! ===${NC}"
 
@@ -372,11 +520,12 @@ main() {
 
     echo -e "\n${GREEN}Next steps:${NC}"
     echo -e "  1. Reboot your system"
-    echo -e "  2. SDDM will start automatically"
-    echo -e "  3. Select 'niri' from the session menu"
+    echo -e "  2. greetd with DMS greeter will start automatically"
+    echo -e "  3. Log in and niri will start"
     echo -e "\nOr run: ${YELLOW}niri${NC} from a TTY"
     echo -e "\nConfig location: ${YELLOW}~/.config/niri${NC}"
     echo -e "\nMonitor configuration: Press ${YELLOW}Mod+Shift+M${NC} to configure monitors"
+    echo -e "\nWallpapers: Press ${YELLOW}Mod+Y${NC} to browse wallpapers"
 
     # Exit with error code if there were failures
     if [ ${#FAILED_PACKAGES[@]} -gt 0 ]; then
