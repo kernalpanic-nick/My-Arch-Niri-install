@@ -445,6 +445,100 @@ deploy_gtk_thunar_config() {
     echo -e "${GREEN}✓ GTK and Thunar themes configured${NC}"
 }
 
+# Setup automount with udiskie
+setup_automount() {
+    echo -e "\n${YELLOW}Setting up automount with udiskie...${NC}"
+
+    # Create udiskie config directory
+    mkdir -p "$HOME/.config/udiskie"
+    mkdir -p "$HOME/.config/systemd/user"
+
+    # Copy udiskie configuration
+    if [ -f "$SCRIPT_DIR/.config/udiskie/config.yml" ]; then
+        cp "$SCRIPT_DIR/.config/udiskie/config.yml" "$HOME/.config/udiskie/"
+        echo -e "${GREEN}✓ Copied udiskie configuration${NC}"
+    fi
+
+    # Copy systemd user service
+    if [ -f "$SCRIPT_DIR/.config/systemd/user/udiskie.service" ]; then
+        cp "$SCRIPT_DIR/.config/systemd/user/udiskie.service" "$HOME/.config/systemd/user/"
+        echo -e "${GREEN}✓ Copied udiskie systemd service${NC}"
+    fi
+
+    # Ensure proper ownership (should be user, not root)
+    chown -R "$USER:$USER" "$HOME/.config/udiskie" "$HOME/.config/systemd/user/udiskie.service" 2>/dev/null
+
+    # Add user to storage group if not already a member
+    if ! groups "$USER" | grep -q "storage"; then
+        echo -e "${YELLOW}Adding $USER to storage group for device access...${NC}"
+        sudo usermod -aG storage "$USER"
+        echo -e "${GREEN}✓ Added $USER to storage group${NC}"
+        echo -e "${YELLOW}Note: You'll need to log out and back in for group changes to take effect${NC}"
+    fi
+
+    # Enable udiskie service as user (NOT as root)
+    systemctl --user daemon-reload
+    systemctl --user enable udiskie.service
+    echo -e "${GREEN}✓ Enabled udiskie user service (runs as $USER, not root)${NC}"
+    echo -e "${YELLOW}Note: Udiskie will auto-start on next login and handle removable media${NC}"
+}
+
+# Cleanup CachyOS bloat packages
+cleanup_cachyos_bloat() {
+    echo -e "\n${BLUE}═══ CachyOS Bloat Cleanup ═══${NC}"
+    echo -e "${YELLOW}Remove unnecessary CachyOS packages?${NC}"
+    echo -e "This will remove:"
+    echo -e "  - cachyos-fish-config (Fish shell config - conflicts with custom configs)"
+    echo -e "  - cachyos-zsh-config (ZSH config - conflicts with custom configs)"
+    echo -e "  - cachyos-micro-settings (Micro editor settings - not needed)"
+    echo -e "  - cachyos-rate-mirrors (Mirror rating tool - only needed once)"
+    echo -e ""
+    echo -e "${GREEN}This will keep essential packages:${NC}"
+    echo -e "  ✓ cachyos-keyring, mirrorlist (required for package repos)"
+    echo -e "  ✓ cachyos-settings, hooks (system configuration)"
+    echo -e "  ✓ cachyos-ananicy-rules (process priority optimization)"
+    echo -e "  ✓ cachyos-snapper-support (btrfs snapshots - currently active)"
+    echo -e "  ✓ linux-cachyos kernels"
+    echo -e ""
+    read -p "Remove bloat packages? [y/N] " -n 1 -r
+    echo
+
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        echo -e "${YELLOW}Removing CachyOS bloat packages...${NC}"
+
+        # List of packages to remove
+        local bloat_packages=(
+            "cachyos-fish-config"
+            "cachyos-zsh-config"
+            "cachyos-micro-settings"
+            "cachyos-rate-mirrors"
+        )
+
+        # Remove packages that are actually installed
+        local to_remove=()
+        for pkg in "${bloat_packages[@]}"; do
+            if pacman -Q "$pkg" &>/dev/null; then
+                to_remove+=("$pkg")
+            fi
+        done
+
+        if [ ${#to_remove[@]} -gt 0 ]; then
+            echo -e "${GREEN}Removing: ${to_remove[*]}${NC}"
+            sudo pacman -Rns --noconfirm "${to_remove[@]}" 2>&1 | tee -a "$INSTALL_LOG"
+
+            if [ $? -eq 0 ]; then
+                echo -e "${GREEN}✓ Successfully removed CachyOS bloat packages${NC}"
+            else
+                echo -e "${YELLOW}⚠ Some packages could not be removed (check log)${NC}"
+            fi
+        else
+            echo -e "${GREEN}✓ No bloat packages found to remove${NC}"
+        fi
+    else
+        echo -e "${YELLOW}Skipped CachyOS cleanup${NC}"
+    fi
+}
+
 # Detect ASUS laptop
 detect_asus_laptop() {
     if [ -f /sys/class/dmi/id/sys_vendor ]; then
@@ -560,8 +654,10 @@ main() {
     deploy_dms_config
     deploy_gtk_thunar_config
     deploy_wallpapers
+    setup_automount
     install_asus_packages
     setup_hibernation_prompt
+    cleanup_cachyos_bloat
 
     echo -e "\n${GREEN}=== Installation Complete! ===${NC}"
 

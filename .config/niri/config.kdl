@@ -134,7 +134,8 @@ overview {
 // See the binds section below for more spawn examples.
 // This line starts waybar, a commonly used bar for Wayland compositors.
 spawn-at-startup "bash" "-c" "wl-paste --watch cliphist store &"
-spawn-at-startup "udiskie" "--tray" "--notify"
+// Udiskie is now started via systemd user service (udiskie.service) instead of spawn-at-startup
+// spawn-at-startup "udiskie" "--tray" "--notify"
 spawn-at-startup "/usr/lib/mate-polkit/polkit-mate-authentication-agent-1"
 spawn-at-startup "dbus-update-activation-environment" "--systemd" "--all"
 spawn-at-startup "gnome-keyring-daemon" "--start" "--components=pkcs11,secrets,ssh"

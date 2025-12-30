@@ -1,0 +1,37 @@
+# Udiskie Configuration
+# Auto-mount and manage removable media
+
+program_options:
+  # Show system tray icon
+  tray: true
+  # Show desktop notifications
+  notify: true
+  # Automount new devices
+  automount: true
+  # Enable password cache (for encrypted devices)
+  password_cache: 30
+  # Password prompt method
+  password_prompt: ['shell:libsecret']
+
+# Notification settings
+notifications:
+  # Timeout in milliseconds (-1 for no timeout)
+  timeout: 5000
+  # Notification urgency (low, normal, critical)
+  device_mounted: normal
+  device_unmounted: low
+  device_added: low
+  device_removed: low
+  job_failed: critical
+
+# Device mount options
+device_config:
+  # Default mount options
+  - id_label: "*"
+    automount: true
+    # Mount options for all devices
+    options:
+      - noatime
+      - nosuid
+      - nodev
+      - noexec
