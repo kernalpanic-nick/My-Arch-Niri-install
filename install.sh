@@ -394,6 +394,57 @@ deploy_wallpapers() {
     fi
 }
 
+# Deploy GTK and Thunar theme configurations
+deploy_gtk_thunar_config() {
+    echo -e "\n${YELLOW}Deploying GTK and Thunar theme configurations...${NC}"
+
+    # Create GTK config directories
+    mkdir -p "$HOME/.config/gtk-3.0"
+    mkdir -p "$HOME/.config/gtk-4.0"
+    mkdir -p "$HOME/.config/Thunar"
+    mkdir -p "$HOME/.config/xfce4/xfconf/xfce-perchannel-xml"
+
+    # Copy GTK-3.0 configurations
+    if [ -f "$SCRIPT_DIR/.config/gtk-3.0/settings.ini" ]; then
+        cp "$SCRIPT_DIR/.config/gtk-3.0/settings.ini" "$HOME/.config/gtk-3.0/"
+        echo -e "${GREEN}✓ Copied GTK-3.0 settings${NC}"
+    fi
+
+    if [ -f "$SCRIPT_DIR/.config/gtk-3.0/dank-colors.css" ]; then
+        cp "$SCRIPT_DIR/.config/gtk-3.0/dank-colors.css" "$HOME/.config/gtk-3.0/"
+        echo -e "${GREEN}✓ Copied GTK-3.0 color scheme${NC}"
+    fi
+
+    if [ -f "$SCRIPT_DIR/.config/gtk-3.0/bookmarks" ]; then
+        cp "$SCRIPT_DIR/.config/gtk-3.0/bookmarks" "$HOME/.config/gtk-3.0/"
+        echo -e "${GREEN}✓ Copied GTK-3.0 bookmarks${NC}"
+    fi
+
+    # Copy GTK-4.0 configurations
+    if [ -f "$SCRIPT_DIR/.config/gtk-4.0/dank-colors.css" ]; then
+        cp "$SCRIPT_DIR/.config/gtk-4.0/dank-colors.css" "$HOME/.config/gtk-4.0/"
+        echo -e "${GREEN}✓ Copied GTK-4.0 color scheme${NC}"
+    fi
+
+    # Copy Thunar configurations
+    if [ -f "$SCRIPT_DIR/.config/Thunar/accels.scm" ]; then
+        cp "$SCRIPT_DIR/.config/Thunar/accels.scm" "$HOME/.config/Thunar/"
+        echo -e "${GREEN}✓ Copied Thunar keyboard shortcuts${NC}"
+    fi
+
+    if [ -f "$SCRIPT_DIR/.config/Thunar/uca.xml" ]; then
+        cp "$SCRIPT_DIR/.config/Thunar/uca.xml" "$HOME/.config/Thunar/"
+        echo -e "${GREEN}✓ Copied Thunar custom actions${NC}"
+    fi
+
+    if [ -f "$SCRIPT_DIR/.config/xfce4/xfconf/xfce-perchannel-xml/thunar.xml" ]; then
+        cp "$SCRIPT_DIR/.config/xfce4/xfconf/xfce-perchannel-xml/thunar.xml" "$HOME/.config/xfce4/xfconf/xfce-perchannel-xml/"
+        echo -e "${GREEN}✓ Copied Thunar settings${NC}"
+    fi
+
+    echo -e "${GREEN}✓ GTK and Thunar themes configured${NC}"
+}
+
 # Detect ASUS laptop
 detect_asus_laptop() {
     if [ -f /sys/class/dmi/id/sys_vendor ]; then
@@ -507,6 +558,7 @@ main() {
     enable_greetd
     setup_symlinks
     deploy_dms_config
+    deploy_gtk_thunar_config
     deploy_wallpapers
     install_asus_packages
     setup_hibernation_prompt
