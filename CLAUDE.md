@@ -4,12 +4,39 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Context
 
-This directory (`/home/chaos/claude/MyNiri`) is a working directory for Claude Code sessions. The actual Niri configuration repository is located at `/home/chaos/niri-setup/`.
-
-**Primary Repository Location:** `/home/chaos/niri-setup/`
+**This Repository:** `/home/chaos/niri-setup/`
 - Git remote: https://github.com/kernalpanic-nick/My-Arch-Niri-install
-- Contains complete installation automation and configuration
-- Active niri config is at: `/home/chaos/.config/niri/` (copied from niri-setup)
+- Complete Arch Linux + Niri installation automation
+- Includes configuration files, scripts, and documentation
+- Active niri config location: `/home/chaos/.config/niri/` (deployed from this repository)
+
+**Repository Structure:**
+```
+/home/chaos/niri-setup/
+├── .config/niri/           # Niri configuration files
+│   ├── config.kdl          # Main niri config (593 lines)
+│   ├── dms/                # DMS modular configs
+│   └── scripts/            # Helper scripts (monitor config, workspace setup)
+├── .config/DankMaterialShell/  # DMS configuration
+│   ├── settings.json       # DMS settings (sanitized)
+│   ├── plugin_settings.json
+│   └── plugins/            # 6 pre-installed plugins
+├── wallpapers/             # 11 desktop wallpapers (6MB)
+├── etc/                    # System config templates
+│   ├── greetd/            # greetd display manager config
+│   ├── asusd/             # ASUS laptop configuration
+│   ├── systemd/           # Power management configs
+│   └── initcpio/          # Custom hibernation resume hooks
+├── scripts/
+│   └── setup-hibernation.sh  # Hibernation setup automation
+├── packages-official.txt   # Official repository packages
+├── packages-aur.txt        # AUR packages
+├── install.sh              # Main installation script
+├── README.md               # User-facing documentation
+├── TROUBLESHOOTING.md      # Troubleshooting guide
+├── SECURE_BOOT.md          # Secure boot setup guide
+└── CLAUDE.md               # This file (AI assistant guidance)
+```
 
 ## Authentication and Security
 
@@ -182,8 +209,50 @@ dms ipc call processlist toggle
 │   ├── layout.kdl      # Layout settings (gaps, borders)
 │   └── wpblur.kdl      # Wallpaper blur layer rules
 └── scripts/
-    └── configure-monitors.sh  # Auto monitor detection
+    ├── configure-monitors.sh  # Interactive monitor configuration
+    ├── identify-monitor.sh    # Visual monitor identification helper
+    └── setup-workspaces.sh    # Workspace & app configuration wizard
 ```
+
+### Helper Scripts
+
+**configure-monitors.sh** - Interactive Monitor Configuration
+- **Location**: `~/.config/niri/scripts/configure-monitors.sh`
+- **Keybinding**: `Mod+Shift+M`
+- **Features**:
+  - Auto-detects all connected monitors
+  - Visual monitor identification (shows large numbers on each monitor)
+  - Two configuration modes:
+    - **Quick setup [1]**: Auto-selects best settings (highest resolution/refresh)
+    - **Custom setup [2]**: Interactive per-monitor configuration
+  - Configurable per monitor: resolution, refresh rate, scale factor
+  - Monitor ordering (left-to-right physical arrangement)
+  - Validates all input with sensible defaults
+  - Backs up config before applying changes
+  - Automatically reloads niri configuration
+- **Visual Identification**: For multi-monitor setups, especially useful with identical monitors
+  - Shows large numbered identifier on each monitor for 3 seconds
+  - Displays monitor number, connector name, and model
+  - Uses kitty terminal with 48pt green text on black background
+  - Automatically positions windows on correct monitors
+
+**setup-workspaces.sh** - Workspace & Application Configuration Wizard
+- **Location**: `~/.config/niri/scripts/setup-workspaces.sh`
+- **Purpose**: Interactive setup of named workspaces and auto-launching applications
+- **Features**:
+  - Configure 1-10 named workspaces with custom names
+  - Set up auto-launching applications with workspace assignments
+  - Collects app commands, app-ids, and workspace placement
+  - Generates proper KDL configuration snippets
+  - Outputs to `~/workspace-setup.kdl` for manual integration
+  - Validates all user input with helpful examples
+- **Use Case**: Perfect for setting up workspace-based workflows (browser, dev, chat workspaces)
+
+**identify-monitor.sh** - Standalone Monitor Identifier
+- **Location**: `~/.config/niri/scripts/identify-monitor.sh`
+- **Usage**: `./identify-monitor.sh <monitor_number> <connector_name>`
+- **Purpose**: Quick visual identification of a specific monitor
+- **Used By**: configure-monitors.sh for multi-monitor identification
 
 **Key Configuration Sections:**
 - **Named Workspaces** (lines 10-12): browser, dev, chat (Mod+1, Mod+2, Mod+3)
@@ -264,6 +333,12 @@ grep "StartupWMClass=" /usr/share/applications/*.desktop
 
 ### RGB/Aura Keyboard Lighting (ASUS ROG)
 
+**Important**: User must be in the `asus-users` group to control ASUS hardware features.
+- The install script automatically adds users to this group during installation
+- **You must log out and back in** after installation for group membership to take effect
+- Check membership: `groups | grep asus-users`
+- Manual add: `sudo usermod -aG asus-users $USER`
+
 **Keyboard Backlight Brightness:**
 - **Fn+F2** - Decrease keyboard brightness
 - **Fn+F3** - Increase keyboard brightness
@@ -322,10 +397,12 @@ asusctl -k high  # High brightness
 - **CRITICAL**: Config files must be owned by user `chaos:chaos` with at least `644` permissions
 - If niri can't read config.kdl, it runs with fallback config and keybindings won't work
 
-**SDDM Display Manager:**
-- Enabled and running
-- Select "niri" session at login
-- Status: `systemctl status sddm`
+**greetd Display Manager with DMS Greeter:**
+- Enabled and running (`systemctl status greetd`)
+- Uses DMS greeter for graphical login
+- Automatically starts niri session
+- Configuration: `/etc/greetd/config.toml`
+- DMS greeter package: `greetd-dms-greeter-git` (AUR)
 
 ### Troubleshooting
 
@@ -589,9 +666,74 @@ swapon --show
    - Check for errors: `journalctl -b -0 | grep -i "hibernat\|resume"`
    - If initramfs was updated, reboot to load new initramfs
 
-### Reference Documentation
+## Installation Automation (install.sh)
 
-For complete installation automation and package management:
-- See `/home/chaos/niri-setup/CLAUDE.md`
-- See `/home/chaos/niri-setup/README.md`
-- See `/home/chaos/niri-setup/SECURE_BOOT.md`
+The repository includes a comprehensive installation script (`install.sh`) that automates the entire setup process:
+
+**Installation Flow:**
+1. **Prerequisites Check** - Validates running on Arch Linux
+2. **AUR Helper** - Installs paru or yay
+3. **Official Packages** - Installs packages from packages-official.txt
+4. **Hardware Detection** - Auto-detects CPU (Intel/AMD), GPU (Intel/NVIDIA/AMD), and ASUS laptops
+5. **AUR Packages** - Installs packages from packages-aur.txt
+6. **Flatpak Applications** - Installs flatpak apps
+7. **greetd Configuration** - Sets up greetd with DMS greeter
+8. **Config Deployment** - Copies niri configuration to ~/.config/niri/
+9. **DMS Deployment** - Copies DMS settings and 6 plugins to ~/.config/DankMaterialShell/
+10. **Wallpaper Deployment** - Copies 11 wallpapers to ~/Pictures/Wallpaper/
+11. **ASUS Packages** (optional) - If ASUS laptop detected, offers to install asusctl, rog-control-center, supergfxctl
+12. **Hibernation Setup** (optional) - Prompts to configure hibernation with auto-sized swap file
+
+**Key Features:**
+- **Automatic hardware detection** using DMI and PCI queries
+- **ASUS laptop support** with automatic group membership (asus-users)
+- **Error handling** with detailed logging to install.log
+- **Backup creation** before applying configurations
+- **Non-interactive mode** available with sensible defaults
+- **Idempotent** - Safe to run multiple times
+
+**ASUS Laptop Installation:**
+- Auto-detects ASUS laptops via `/sys/class/dmi/id/sys_vendor`
+- Creates `asus-users` group if needed
+- Adds user to `asus-users` group (required for hardware control)
+- Enables `asusd.service`
+- Optionally copies ASUS configuration template
+
+**Hibernation Setup:**
+- Auto-detects RAM size from `/proc/meminfo`
+- Creates swap file sized at RAM + 10% (minimum 2GB buffer)
+- Configures custom initramfs hooks for LUKS encrypted swap resume
+- Updates bootloader configuration with resume parameters
+- Sets up suspend-then-hibernate with 2-hour delay
+
+## Repository Maintenance
+
+**When updating configuration:**
+1. Test changes in active config (`~/.config/niri/`)
+2. Copy working config back to repository
+3. Update documentation (CLAUDE.md, README.md, TROUBLESHOOTING.md)
+4. Commit with descriptive message
+5. Push to GitHub
+
+**Git workflow:**
+```bash
+cd /home/chaos/niri-setup
+git add <changed_files>
+git commit -m "descriptive message"
+git push origin main
+```
+
+## Reference Documentation
+
+**This Repository Documentation:**
+- `README.md` - User-facing installation and feature documentation
+- `CLAUDE.md` - This file (AI assistant guidance)
+- `TROUBLESHOOTING.md` - Comprehensive troubleshooting guide
+- `SECURE_BOOT.md` - Secure boot setup guide
+
+**Configuration Files:**
+- `.config/niri/config.kdl` - Main niri configuration
+- `.config/DankMaterialShell/settings.json` - DMS configuration
+- `etc/greetd/config.toml` - Display manager configuration
+- `etc/asusd/asusd.ron` - ASUS laptop configuration
+- `scripts/setup-hibernation.sh` - Hibernation automation script
