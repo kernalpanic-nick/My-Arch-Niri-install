@@ -427,6 +427,17 @@ install_asus_packages() {
             # Enable asusd service
             sudo systemctl enable asusd
 
+            # Create asus-users group and add current user
+            echo -e "${YELLOW}Adding user to asus-users group...${NC}"
+            if ! getent group asus-users >/dev/null 2>&1; then
+                sudo groupadd asus-users
+                echo -e "${GREEN}✓ Created asus-users group${NC}"
+            fi
+
+            sudo usermod -aG asus-users "$USER"
+            echo -e "${GREEN}✓ Added $USER to asus-users group${NC}"
+            echo -e "${YELLOW}Note: You'll need to log out and back in for group changes to take effect${NC}"
+
             # Copy ASUS configuration if available
             if [ -f "$SCRIPT_DIR/etc/asusd/asusd.ron" ]; then
                 echo -e "${YELLOW}Copy ASUS configuration template?${NC}"

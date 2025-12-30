@@ -248,6 +248,8 @@ The installer auto-detects ASUS ROG laptops and offers to install:
 - **rog-control-center** - GUI for ASUS settings
 - **supergfxctl** - GPU switching control
 
+**Important**: The installer automatically adds your user to the `asus-users` group, which is required for controlling RGB keyboard, fan profiles, and other ASUS-specific features. You'll need to log out and back in after installation for group membership to take effect.
+
 Includes pre-configured settings for optimal power management and RGB control via `Mod+F4` keybinding.
 
 ### Desktop Wallpapers

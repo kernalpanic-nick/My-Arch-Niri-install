@@ -431,6 +431,30 @@ journalctl -b -1 | grep -i "hibernat\|resume"
 
 ## ASUS Laptop Issues
 
+### RGB/Fan Controls Not Working (Permission Denied)
+
+**Symptom**: `asusctl` commands fail with permission errors or don't change settings
+
+**Cause**: User not in `asus-users` group
+
+**Fix**:
+```bash
+# Check if user is in asus-users group
+groups | grep asus-users
+
+# If not, add user to group
+sudo usermod -aG asus-users $USER
+
+# Log out and back in for changes to take effect
+# Or use newgrp to activate group temporarily:
+newgrp asus-users
+
+# Verify group membership
+groups
+```
+
+**Note**: The install script automatically adds users to the `asus-users` group, but you need to log out/in for it to take effect.
+
 ### asusctl Service Won't Start
 
 **Checks**:
@@ -444,6 +468,9 @@ journalctl -u asusd -b
 # Verify asusctl is installed
 which asusctl
 asusctl --version
+
+# Ensure asus-users group exists
+getent group asus-users
 ```
 
 **Common Fixes**:
