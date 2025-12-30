@@ -23,6 +23,74 @@ This setup includes:
 2. **Limine Bootloader**: Select Limine as your bootloader during installation
 3. **Secure Boot** (Optional): See [SECURE_BOOT.md](SECURE_BOOT.md) for detailed secure boot setup
 
+## Choosing User UID/GID During Installation
+
+During CachyOS installation, you'll be prompted to create a user account. By default, the installer will assign UID/GID 1000 to the first user. However, you may want to choose a specific UID/GID in certain scenarios.
+
+### Why UID/GID Matters
+
+- **File Ownership**: UIDs determine who owns files on disk
+- **Network Shares**: Consistent UIDs across systems prevent permission issues with NFS/SMB
+- **Multi-boot Systems**: Using the same UID across installations allows shared /home partitions
+- **Containers/VMs**: Matching host and container UIDs simplifies bind mounts
+- **Backup Restoration**: Consistent UIDs make restoring backups to new systems easier
+
+### When to Use Custom UID/GID
+
+**Use Default (1000)** if:
+- Single system with no network shares
+- First time installing Linux
+- No specific UID requirements
+
+**Use Custom UID** if:
+- **Multiple systems**: Use the same UID across all your machines (e.g., 1001)
+- **Network storage**: Your NFS/SMB server expects a specific UID
+- **Shared /home partition**: All installations must use the same UID to access shared files
+- **Corporate/institutional**: Your organization assigns specific UID ranges
+- **UID conflicts**: 1000 is already taken on your network
+
+### How to Choose UID/GID in CachyOS Installer
+
+**During the installer user creation step:**
+
+1. When prompted for username, enter your desired username
+2. **For custom UID/GID**, the installer typically asks for this in advanced options
+3. **Common custom UIDs**: 1001-1999 (user range), avoid system UIDs (0-999)
+
+**Example UID choices:**
+- **1000**: Standard default (recommended for most users)
+- **1001**: Common choice for custom UID on multiple systems
+- **5000-9999**: Often used in corporate environments
+- **Avoid**: 0 (root), 1-999 (system accounts)
+
+### After Installation
+
+**Check your UID/GID:**
+```bash
+id
+# Output: uid=1000(username) gid=1000(username) groups=...
+```
+
+**If you need to change UID/GID later** (requires root):
+```bash
+# WARNING: This is complex and can break file permissions
+# Backup important data first!
+
+# Change UID/GID (while logged out or from root shell)
+sudo usermod -u NEW_UID username
+sudo groupmod -g NEW_GID username
+
+# Fix file ownership (this may take a while)
+sudo find / -user OLD_UID -exec chown -h NEW_UID {} \;
+sudo find / -group OLD_GID -exec chgrp -h NEW_GID {} \;
+```
+
+**Important Notes:**
+- You cannot change your UID while logged in as that user
+- Changing UID later is risky and can break permissions
+- **Best practice**: Choose the correct UID during initial installation
+- If unsure, use the default (1000)
+
 ## Quick Start
 
 After completing CachyOS CLI installation and booting into your minimal system:

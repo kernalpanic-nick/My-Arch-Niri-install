@@ -666,6 +666,79 @@ swapon --show
    - Check for errors: `journalctl -b -0 | grep -i "hibernat\|resume"`
    - If initramfs was updated, reboot to load new initramfs
 
+## User UID/GID Selection During CachyOS Installation
+
+**Important Consideration Before Installing CachyOS:**
+
+During CachyOS installation, you'll create a user account with an assigned UID (User ID) and GID (Group ID). The default is typically 1000:1000 for the first user, but there are scenarios where choosing a custom UID/GID is beneficial.
+
+### Why UID/GID Matters
+
+- **File Ownership**: UIDs determine ownership of files on the filesystem
+- **Network Shares (NFS/SMB)**: Consistent UIDs across systems prevent permission issues
+- **Multi-boot Systems**: Shared /home partitions require matching UIDs across installations
+- **Containers/VMs**: Matching UIDs between host and containers simplifies bind mounts and permissions
+- **Backup Restoration**: Consistent UIDs make cross-system backups easier to restore
+
+### Current System Configuration
+
+This system uses: `uid=1000(chaos) gid=1000(chaos)`
+
+### UID/GID Selection Guidelines
+
+**Use Default (1000:1000)** if:
+- Single system, no network shares
+- First Linux installation
+- No specific requirements
+
+**Use Custom UID** if:
+- Managing multiple systems (use same UID everywhere, e.g., 1001)
+- NFS/SMB file server expects specific UIDs
+- Shared /home partition across multiple OS installations
+- Corporate/institutional UID ranges assigned
+- UID 1000 conflicts on existing network
+
+**Common UID Ranges:**
+- **0**: root (never use for regular users)
+- **1-999**: System accounts (avoid)
+- **1000-1999**: User accounts (standard range)
+- **5000-9999**: Common in enterprise environments
+
+### Changing UID/GID Post-Installation
+
+**Warning**: Changing UID/GID after installation is complex and risky.
+
+If absolutely necessary:
+```bash
+# Must be done as root, user must be logged out
+sudo usermod -u NEW_UID username
+sudo groupmod -g NEW_GID username
+
+# Fix all file ownership (may take hours on large filesystems)
+sudo find / -user OLD_UID -exec chown -h NEW_UID {} \;
+sudo find / -group OLD_GID -exec chgrp -h NEW_GID {} \;
+```
+
+**Best Practice**: Choose the correct UID during initial CachyOS installation. Changing it later can break:
+- File permissions
+- systemd user services
+- Application configurations
+- SSH authorized_keys
+- LUKS encryption metadata
+
+### Verifying UID/GID
+
+```bash
+# Check current user's UID/GID
+id
+
+# Check specific user
+id username
+
+# List all users with UIDs
+getent passwd | awk -F: '{print $1, $3, $4}'
+```
+
 ## Installation Automation (install.sh)
 
 The repository includes a comprehensive installation script (`install.sh`) that automates the entire setup process:
