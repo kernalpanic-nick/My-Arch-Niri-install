@@ -118,6 +118,72 @@ for i in "${!CONNECTORS[@]}"; do
     echo -e "  ${YELLOW}[$idx]${NC} $connector - $name (Best: ${GREEN}$best_mode${NC})"
 done
 
+# Visual monitor identification for multi-monitor setups
+if [ "$num_monitors" -gt 1 ]; then
+    echo -e "\n${BLUE}Multiple monitors detected!${NC}"
+    echo -e "${YELLOW}Would you like to visually identify each monitor?${NC}"
+    echo -e "This will show a large number on each monitor to help you identify them."
+    read -p "Identify monitors? [Y/n]: " -n 1 -r
+    echo
+
+    if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+        echo -e "${GREEN}Identifying monitors (3 seconds each)...${NC}\n"
+
+        for i in "${!CONNECTORS[@]}"; do
+            idx=$((i + 1))
+            connector="${CONNECTORS[$i]}"
+            name="${MONITORS[$i]}"
+
+            echo -e "${YELLOW}Showing identifier on Monitor $idx: $connector${NC}"
+
+            # Use kitty to show monitor number (with specific position for each monitor)
+            (
+                WAYLAND_DISPLAY=$WAYLAND_DISPLAY kitty \
+                    --class "monitor-id-$idx" \
+                    --title "Monitor $idx" \
+                    -o font_size=48 \
+                    -o background='#000000' \
+                    -o foreground='#00ff00' \
+                    -o background_opacity=0.95 \
+                    bash -c "
+                        clear
+                        echo ''
+                        echo '  ╔════════════════════════════════╗'
+                        echo '  ║                                ║'
+                        echo '  ║        MONITOR  $idx             ║'
+                        echo '  ║                                ║'
+                        echo '  ║        $connector              ║'
+                        echo '  ║                                ║'
+                        echo '  ║        $name                   ║'
+                        echo '  ║                                ║'
+                        echo '  ╚════════════════════════════════╝'
+                        echo ''
+                        echo '  This window will close in 3 seconds...'
+                        sleep 3
+                    " &
+                pid=$!
+
+                # Wait for window to appear
+                sleep 0.5
+
+                # Move window to the correct monitor using niri msg
+                # Find the window and move it
+                window_id=$(niri msg windows | grep -A5 "monitor-id-$idx" | grep "id:" | head -1 | awk '{print $2}')
+                if [ -n "$window_id" ]; then
+                    niri msg action move-window-to-output --output "$connector" --window "$window_id" 2>/dev/null || true
+                fi
+
+                wait $pid
+            ) &
+
+            sleep 3.5
+        done
+
+        wait
+        echo -e "\n${GREEN}Monitor identification complete!${NC}\n"
+    fi
+fi
+
 # Ask for configuration mode
 echo -e "\n${BLUE}Configuration Options:${NC}"
 echo -e "  ${YELLOW}[1]${NC} Quick setup - Use best settings for all monitors (automatic)"
