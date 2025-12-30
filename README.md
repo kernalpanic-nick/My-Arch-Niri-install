@@ -228,13 +228,13 @@ The script will:
 ### Hibernation Support
 
 The installer offers optional hibernation setup with:
-- **40GB swap file** on btrfs subvolume
+- **Auto-sized swap file** (RAM + 10% buffer) on btrfs subvolume
 - **Custom initramfs hooks** for reliable resume from encrypted swap
 - **Suspend-then-hibernate** (2 hour delay)
 - **Lid closure integration**
 - **Power management** optimized for laptops
 
-**Requirements**: LUKS encryption, Limine bootloader, 40GB+ free disk space
+**Requirements**: LUKS encryption, Limine bootloader, sufficient free disk space
 
 To set up hibernation later:
 ```bash

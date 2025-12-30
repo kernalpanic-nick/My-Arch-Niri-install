@@ -452,10 +452,10 @@ setup_hibernation_prompt() {
     echo -e "${RED}WARNING: This requires:${NC}"
     echo "  • LUKS-encrypted root filesystem"
     echo "  • Limine bootloader"
-    echo "  • 40GB+ free disk space"
+    echo "  • Sufficient free disk space (swap = RAM + 10% buffer)"
     echo "  • btrfs filesystem (recommended)"
     echo ""
-    echo "This will create a 40GB swap file and modify boot configuration."
+    echo "This will create a swap file (sized to match your RAM) and modify boot configuration."
     echo ""
     read -p "Continue with hibernation setup? [y/N] " -n 1 -r
     echo

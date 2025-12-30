@@ -63,11 +63,27 @@ if ! findmnt -n -o FSTYPE / | grep -q "btrfs"; then
     fi
 fi
 
+# Detect RAM size and calculate swap size
+total_ram_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+total_ram_gb=$((total_ram_kb / 1024 / 1024))
+
+# Calculate swap size: RAM + 10% buffer (minimum 2GB extra)
+buffer_gb=$((total_ram_gb / 10))
+if [ "$buffer_gb" -lt 2 ]; then
+    buffer_gb=2
+fi
+swap_size_gb=$((total_ram_gb + buffer_gb))
+
+echo -e "${GREEN}Detected RAM: ${total_ram_gb}GB${NC}"
+echo -e "${GREEN}Calculated swap size: ${swap_size_gb}GB (RAM + ${buffer_gb}GB buffer)${NC}"
+
 # Check available disk space
 available_space=$(df -BG / | awk 'NR==2 {print $4}' | sed 's/G//')
-if [ "$available_space" -lt 45 ]; then
-    echo -e "${YELLOW}Warning: Less than 45GB free space available${NC}"
-    echo "Available: ${available_space}GB (Recommended: 45GB+)"
+required_space=$((swap_size_gb + 5))  # Swap + 5GB extra headroom
+
+if [ "$available_space" -lt "$required_space" ]; then
+    echo -e "${YELLOW}Warning: Less than ${required_space}GB free space available${NC}"
+    echo "Available: ${available_space}GB (Required: ${required_space}GB)"
     echo "Continue anyway? [y/N]"
     read -r response
     if [[ ! "$response" =~ ^[Yy]$ ]]; then
@@ -77,7 +93,7 @@ fi
 
 echo -e "\n${YELLOW}=== Hibernation Setup Configuration ===${NC}"
 echo "This will:"
-echo "  1. Create a 40GB swap file at /swap/swapfile"
+echo "  1. Create a ${swap_size_gb}GB swap file at /swap/swapfile"
 echo "  2. Configure custom initramfs hooks for resume"
 echo "  3. Update Limine bootloader configuration"
 echo "  4. Configure suspend-then-hibernate (2 hour delay)"
@@ -113,9 +129,9 @@ if [ ! -f /swap/swapfile ]; then
         chattr +C /swap 2>/dev/null || true
     fi
 
-    # Create 40GB swap file
-    echo "Creating 40GB swap file (this may take a few minutes)..."
-    fallocate -l 40G /swap/swapfile
+    # Create swap file
+    echo "Creating ${swap_size_gb}GB swap file (this may take a few minutes)..."
+    fallocate -l ${swap_size_gb}G /swap/swapfile
     chmod 600 /swap/swapfile
     mkswap /swap/swapfile
     echo -e "${GREEN}✓ Swap file created${NC}"
@@ -351,7 +367,7 @@ mkinitcpio -P
 echo -e "\n${GREEN}=== Hibernation Setup Complete! ===${NC}"
 echo ""
 echo -e "${YELLOW}Important Information:${NC}"
-echo "  • Swap file: /swap/swapfile (40GB)"
+echo "  • Swap file: /swap/swapfile (${swap_size_gb}GB)"
 echo "  • Resume device: $LUKS_DEVICE"
 echo "  • Resume offset: $SWAP_OFFSET"
 echo "  • Device major:minor: $DEVICE_MAJOR_MINOR"
