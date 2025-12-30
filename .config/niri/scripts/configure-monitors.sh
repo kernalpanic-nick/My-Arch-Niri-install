@@ -1,8 +1,8 @@
 #!/bin/bash
 #
-# Automatic Monitor Configuration for Niri
-# Detects connected monitors and generates niri output configuration
-# Selects highest resolution and refresh rate for each monitor
+# Interactive Monitor Configuration for Niri
+# Detects connected monitors and allows customization of settings
+# Supports: resolution, refresh rate, scale, position
 #
 
 CONFIG_FILE="$HOME/.config/niri/config.kdl"
@@ -14,6 +14,7 @@ FIRST_RUN_MARKER="$HOME/.config/niri/.monitor-configured"
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
+BLUE='\033[0;34m'
 NC='\033[0m'
 
 # Check if running under niri
@@ -35,6 +36,8 @@ fi
 declare -a MONITORS
 declare -a CONNECTORS
 declare -A MONITOR_MODES
+declare -A MONITOR_SELECTED_MODE
+declare -A MONITOR_SCALE
 
 output_pattern='^Output.*\(([^)]+)\)$'
 
@@ -106,53 +109,151 @@ if [ "$num_monitors" -eq 0 ]; then
     exit 1
 fi
 
-echo -e "${GREEN}Detected monitors:${NC}"
+echo -e "${GREEN}Detected $num_monitors monitor(s):${NC}"
 for i in "${!CONNECTORS[@]}"; do
     idx=$((i + 1))
     connector="${CONNECTORS[$i]}"
     name="${MONITORS[$i]}"
     best_mode=$(find_best_mode "$connector")
-    echo -e "  ${YELLOW}[$idx]${NC} $connector - $name"
-    echo -e "      Best mode: ${GREEN}$best_mode${NC}"
+    echo -e "  ${YELLOW}[$idx]${NC} $connector - $name (Best: ${GREEN}$best_mode${NC})"
 done
 
-# Ask for monitor order
-declare -a MONITOR_ORDER
-if [ ! -f "$FIRST_RUN_MARKER" ]; then
-    # First run - use default order (as detected)
-    echo -e "\n${YELLOW}First run: Using default left-to-right order${NC}"
-    for i in "${!CONNECTORS[@]}"; do
-        MONITOR_ORDER+=("$i")
-    done
-else
-    # Ask user for order
-    echo -e "\n${YELLOW}Specify monitor order from left to right${NC}"
-    echo -e "Enter monitor numbers separated by spaces (e.g., '1 3 2' or '2 1 3')"
-    echo -e "Or press Enter to use default order"
-    read -p "Order: " -r user_order
+# Ask for configuration mode
+echo -e "\n${BLUE}Configuration Options:${NC}"
+echo -e "  ${YELLOW}[1]${NC} Quick setup - Use best settings for all monitors (automatic)"
+echo -e "  ${YELLOW}[2]${NC} Custom setup - Choose resolution, refresh rate, and scale per monitor"
+echo ""
+read -p "Select mode [1/2]: " -n 1 -r config_mode
+echo
 
-    # Parse user input
-    if [ -z "$user_order" ]; then
-        echo -e "${YELLOW}Using default order${NC}"
+if [[ ! $config_mode =~ ^[12]$ ]]; then
+    config_mode=1
+    echo -e "${YELLOW}Using quick setup (default)${NC}"
+fi
+
+# Configure each monitor
+for i in "${!CONNECTORS[@]}"; do
+    idx=$((i + 1))
+    connector="${CONNECTORS[$i]}"
+    name="${MONITORS[$i]}"
+
+    if [ "$config_mode" = "1" ]; then
+        # Quick setup - auto select best mode
+        best_mode=$(find_best_mode "$connector")
+        MONITOR_SELECTED_MODE["$connector"]="$best_mode"
+        MONITOR_SCALE["$connector"]="1.0"
+        echo -e "${GREEN}[$idx] $connector: $best_mode @ 1.0x scale${NC}"
+    else
+        # Custom setup - interactive selection
+        echo -e "\n${BLUE}=== Configuring Monitor $idx: $connector ($name) ===${NC}"
+
+        # Show available modes
+        echo -e "${YELLOW}Available modes:${NC}"
+        modes_array=()
+        mode_num=1
+        for mode in ${MONITOR_MODES[$connector]}; do
+            modes_array+=("$mode")
+            # Parse mode to show resolution and refresh rate nicely
+            if [[ $mode =~ ([0-9]+)x([0-9]+)@([0-9.]+) ]]; then
+                width="${BASH_REMATCH[1]}"
+                height="${BASH_REMATCH[2]}"
+                refresh="${BASH_REMATCH[3]}"
+                # Round refresh rate for display
+                refresh_rounded=$(printf "%.0f" "$refresh")
+                echo -e "  ${YELLOW}[$mode_num]${NC} ${width}x${height} @ ${refresh_rounded}Hz"
+            fi
+            mode_num=$((mode_num + 1))
+        done
+
+        # Get best mode index
+        best_mode=$(find_best_mode "$connector")
+        best_idx=1
+        for idx_check in "${!modes_array[@]}"; do
+            if [ "${modes_array[$idx_check]}" = "$best_mode" ]; then
+                best_idx=$((idx_check + 1))
+                break
+            fi
+        done
+
+        echo -e "\n${GREEN}Recommended: [$best_idx]${NC}"
+        read -p "Select mode (or press Enter for recommended): " selected_mode_num
+
+        if [ -z "$selected_mode_num" ]; then
+            selected_mode_num=$best_idx
+        fi
+
+        # Validate selection
+        if [[ ! "$selected_mode_num" =~ ^[0-9]+$ ]] || [ "$selected_mode_num" -lt 1 ] || [ "$selected_mode_num" -gt "${#modes_array[@]}" ]; then
+            echo -e "${RED}Invalid selection, using recommended mode${NC}"
+            selected_mode_num=$best_idx
+        fi
+
+        selected_mode="${modes_array[$((selected_mode_num - 1))]}"
+        MONITOR_SELECTED_MODE["$connector"]="$selected_mode"
+
+        # Ask for scale
+        echo -e "\n${YELLOW}Scale factor (1.0 = native, 1.5 = 150%, 2.0 = 200%):${NC}"
+        echo -e "  Common values: ${GREEN}1.0${NC} (native), ${GREEN}1.25${NC}, ${GREEN}1.5${NC}, ${GREEN}2.0${NC}"
+        read -p "Scale [1.0]: " scale_factor
+
+        if [ -z "$scale_factor" ]; then
+            scale_factor="1.0"
+        fi
+
+        # Validate scale (basic check)
+        if [[ ! "$scale_factor" =~ ^[0-9]+\.?[0-9]*$ ]]; then
+            echo -e "${RED}Invalid scale, using 1.0${NC}"
+            scale_factor="1.0"
+        fi
+
+        MONITOR_SCALE["$connector"]="$scale_factor"
+
+        echo -e "${GREEN}✓ Configured: $selected_mode @ ${scale_factor}x scale${NC}"
+    fi
+done
+
+# Ask for monitor order if multiple monitors
+declare -a MONITOR_ORDER
+if [ "$num_monitors" -gt 1 ]; then
+    if [ ! -f "$FIRST_RUN_MARKER" ]; then
+        # First run - use default order (as detected)
+        echo -e "\n${YELLOW}First run: Using default left-to-right order${NC}"
         for i in "${!CONNECTORS[@]}"; do
             MONITOR_ORDER+=("$i")
         done
     else
-        for num in $user_order; do
-            idx=$((num - 1))
-            if [ "$idx" -ge 0 ] && [ "$idx" -lt "$num_monitors" ]; then
-                MONITOR_ORDER+=("$idx")
-            else
-                echo -e "${RED}Error: Invalid monitor number: $num${NC}"
+        # Ask user for order
+        echo -e "\n${YELLOW}Specify monitor order from left to right${NC}"
+        echo -e "Enter monitor numbers separated by spaces (e.g., '1 2' or '2 1')"
+        echo -e "Or press Enter to use default order"
+        read -p "Order: " -r user_order
+
+        # Parse user input
+        if [ -z "$user_order" ]; then
+            echo -e "${YELLOW}Using default order${NC}"
+            for i in "${!CONNECTORS[@]}"; do
+                MONITOR_ORDER+=("$i")
+            done
+        else
+            for num in $user_order; do
+                order_idx=$((num - 1))
+                if [ "$order_idx" -ge 0 ] && [ "$order_idx" -lt "$num_monitors" ]; then
+                    MONITOR_ORDER+=("$order_idx")
+                else
+                    echo -e "${RED}Error: Invalid monitor number: $num${NC}"
+                    exit 1
+                fi
+            done
+
+            if [ "${#MONITOR_ORDER[@]}" -ne "$num_monitors" ]; then
+                echo -e "${RED}Error: You must specify all $num_monitors monitors${NC}"
                 exit 1
             fi
-        done
-
-        if [ "${#MONITOR_ORDER[@]}" -ne "$num_monitors" ]; then
-            echo -e "${RED}Error: You must specify all $num_monitors monitors${NC}"
-            exit 1
         fi
     fi
+else
+    # Single monitor, no ordering needed
+    MONITOR_ORDER=("0")
 fi
 
 # Generate configuration with user-specified order
@@ -161,23 +262,36 @@ x_position=0
 
 for order_idx in "${MONITOR_ORDER[@]}"; do
     connector="${CONNECTORS[$order_idx]}"
-    best_mode=$(find_best_mode "$connector")
+    selected_mode="${MONITOR_SELECTED_MODE[$connector]}"
+    scale="${MONITOR_SCALE[$connector]}"
 
-    if [ -z "$best_mode" ]; then
-        echo -e "${RED}Error: Could not find mode for $connector${NC}"
+    if [ -z "$selected_mode" ]; then
+        echo -e "${RED}Error: No mode selected for $connector${NC}"
         exit 1
     fi
 
     # Extract width from mode
-    if [[ $best_mode =~ ([0-9]+)x([0-9]+)@ ]]; then
+    if [[ $selected_mode =~ ([0-9]+)x([0-9]+)@ ]]; then
         width="${BASH_REMATCH[1]}"
 
         output_lines+="output \"$connector\" {\n"
-        output_lines+="    mode \"$best_mode\"\n"
+        output_lines+="    mode \"$selected_mode\"\n"
+
+        # Add scale if not 1.0
+        if [ "$scale" != "1.0" ]; then
+            output_lines+="    scale $scale\n"
+        fi
+
         output_lines+="    position x=$x_position y=0\n"
         output_lines+="}\n\n"
 
-        x_position=$((x_position + width))
+        # Calculate next position (accounting for scale)
+        if [ "$scale" != "1.0" ]; then
+            scaled_width=$(echo "$width / $scale" | bc)
+            x_position=$((x_position + scaled_width))
+        else
+            x_position=$((x_position + width))
+        fi
     fi
 done
 
@@ -191,7 +305,7 @@ echo -e "\n${GREEN}Generated configuration:${NC}"
 echo -e "$output_lines"
 
 # Ask for confirmation
-if [ -f "$FIRST_RUN_MARKER" ]; then
+if [ -f "$FIRST_RUN_MARKER" ] || [ "$config_mode" = "2" ]; then
     read -p "Apply this configuration? [Y/n] " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Nn]$ ]]; then
@@ -255,4 +369,4 @@ else
 fi
 
 echo -e "\n${GREEN}Monitor configuration complete!${NC}"
-echo -e "You can re-run this script anytime with: Mod+Shift+M"
+echo -e "You can re-run this script anytime with: ${YELLOW}Mod+Shift+M${NC}"
