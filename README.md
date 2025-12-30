@@ -116,14 +116,63 @@ The install script will:
 4. **Install AUR Packages**: Installs packages from the AUR (including dms-shell-git, greetd-dms-greeter-git)
 5. **Install Flatpaks**: Installs flatpak applications from Flathub
 6. **Configure greetd**: Sets up greetd with DMS greeter for beautiful graphical login
-7. **Setup Configs**: Symlinks `.config/niri` to your home directory with full Niri + DMS configuration
+7. **Deploy Niri Config**: Copies `.config/niri` to your home directory with full Niri configuration
 8. **Deploy DMS Configuration**: Copies DMS settings and pre-installed plugins
-9. **Deploy Wallpapers**: Copies 11 desktop wallpapers to ~/Pictures/Wallpaper
-10. **ASUS Laptop Support** (optional): Auto-detects ASUS laptops and offers to install asusctl, rog-control-center
-11. **Hibernation Setup** (optional): Prompts to configure hibernation with 40GB swap file
+9. **Deploy GTK/Thunar Themes**: Copies GTK and Thunar theme configurations
+10. **Deploy Wallpapers**: Copies 11 desktop wallpapers to ~/Pictures/Wallpaper
+11. **Setup Automount**: Configures udiskie for automatic mounting of removable media
+12. **ASUS Laptop Support** (optional): Auto-detects ASUS laptops and offers to install asusctl, rog-control-center
+13. **Hibernation Setup** (optional): Prompts to configure hibernation with auto-sized swap file
+14. **CachyOS Cleanup** (optional): Removes unnecessary CachyOS bloat packages
 
 On first niri login:
-12. **Auto-Configure Monitors**: Automatically detects and configures all connected displays
+15. **Auto-Configure Monitors**: Automatically detects and configures all connected displays
+
+## Configuration Management: Copy vs Symlink
+
+**Important**: All configuration files are **COPIED** to your home directory, not symlinked.
+
+### What This Means
+
+**After installation, your configs are independent:**
+- Changes to `~/.config/niri/` do NOT affect the repository
+- Changes to `~/.config/DankMaterialShell/` do NOT affect the repository
+- You have full control over when to sync changes back to the repo
+- No risk of accidentally committing local-only settings
+
+**All copied files are owned by your user** (not root), ensuring proper permissions.
+
+### Syncing Changes Back to Repository
+
+If you modify your active configuration and want to update the repository:
+
+```bash
+# Navigate to repository
+cd ~/niri-setup
+
+# Copy your modified config back
+cp -r ~/.config/niri/* .config/niri/
+cp -r ~/.config/DankMaterialShell/* .config/DankMaterialShell/
+cp -r ~/.config/gtk-3.0/* .config/gtk-3.0/
+cp -r ~/.config/gtk-4.0/* .config/gtk-4.0/
+# etc...
+
+# Review changes
+git status
+git diff
+
+# Commit and push
+git add .
+git commit -m "Update configuration with local changes"
+git push origin main
+```
+
+**Best Practice:**
+1. Test changes in your active config (`~/.config/`)
+2. Verify everything works correctly
+3. Only then copy back to repository and commit
+
+This approach keeps your repository clean and prevents accidental commits of sensitive or system-specific data.
 
 ## File Structure
 

@@ -285,9 +285,9 @@ install_flatpaks() {
     fi
 }
 
-# Create symlinks for config files
-setup_symlinks() {
-    echo -e "\n${YELLOW}Setting up configuration symlinks...${NC}"
+# Deploy niri configuration files (copy, not symlink)
+deploy_niri_config() {
+    echo -e "\n${YELLOW}Deploying niri configuration...${NC}"
 
     # Backup existing config if it exists
     if [ -d "$HOME/.config/niri" ] && [ ! -L "$HOME/.config/niri" ]; then
@@ -295,16 +295,27 @@ setup_symlinks() {
         echo -e "${YELLOW}Backing up existing config to: $backup_dir${NC}"
         mv "$HOME/.config/niri" "$backup_dir"
     elif [ -L "$HOME/.config/niri" ]; then
-        echo -e "${YELLOW}Removing old symlink${NC}"
+        echo -e "${YELLOW}Removing old symlink (switching to copy method)${NC}"
         rm "$HOME/.config/niri"
     fi
 
     # Create .config directory if it doesn't exist
     mkdir -p "$HOME/.config"
 
-    # Symlink niri config
-    ln -sf "$SCRIPT_DIR/.config/niri" "$HOME/.config/niri"
-    echo -e "${GREEN}✓ Linked niri config${NC}"
+    # Copy niri config (instead of symlink)
+    if [ -d "$SCRIPT_DIR/.config/niri" ]; then
+        cp -r "$SCRIPT_DIR/.config/niri" "$HOME/.config/"
+
+        # Ensure proper ownership (user, not root)
+        chown -R "$USER:$USER" "$HOME/.config/niri"
+
+        echo -e "${GREEN}✓ Copied niri config${NC}"
+        echo -e "${YELLOW}Note: Config is now independent of repository${NC}"
+        echo -e "${YELLOW}To update repo, manually copy changes back from ~/.config/niri/${NC}"
+    else
+        echo -e "${RED}Error: Niri config not found in repository${NC}"
+        return 1
+    fi
 }
 
 # Enable greetd display manager with DMS greeter
@@ -374,6 +385,9 @@ deploy_dms_config() {
         cp -r "$SCRIPT_DIR/.config/DankMaterialShell/plugins/"* "$HOME/.config/DankMaterialShell/plugins/" 2>/dev/null
         echo -e "${GREEN}✓ Copied DMS plugins${NC}"
     fi
+
+    # Ensure proper ownership (user, not root)
+    chown -R "$USER:$USER" "$HOME/.config/DankMaterialShell" 2>/dev/null
 }
 
 # Deploy wallpapers
@@ -388,6 +402,9 @@ deploy_wallpapers() {
         cp "$SCRIPT_DIR/wallpapers/"*.jpg "$HOME/Pictures/Wallpaper/" 2>/dev/null
         wallpaper_count=$(ls "$SCRIPT_DIR/wallpapers/"*.jpg 2>/dev/null | wc -l)
         if [ "$wallpaper_count" -gt 0 ]; then
+            # Ensure proper ownership (user, not root)
+            chown -R "$USER:$USER" "$HOME/Pictures/Wallpaper" 2>/dev/null
+
             echo -e "${GREEN}✓ Copied $wallpaper_count wallpapers${NC}"
             echo -e "${YELLOW}Use Mod+Y to browse wallpapers in DMS${NC}"
         fi
@@ -441,6 +458,9 @@ deploy_gtk_thunar_config() {
         cp "$SCRIPT_DIR/.config/xfce4/xfconf/xfce-perchannel-xml/thunar.xml" "$HOME/.config/xfce4/xfconf/xfce-perchannel-xml/"
         echo -e "${GREEN}✓ Copied Thunar settings${NC}"
     fi
+
+    # Ensure proper ownership (user, not root)
+    chown -R "$USER:$USER" "$HOME/.config/gtk-3.0" "$HOME/.config/gtk-4.0" "$HOME/.config/Thunar" "$HOME/.config/xfce4" 2>/dev/null
 
     echo -e "${GREEN}✓ GTK and Thunar themes configured${NC}"
 }
@@ -650,7 +670,7 @@ main() {
     install_aur_packages
     install_flatpaks
     enable_greetd
-    setup_symlinks
+    deploy_niri_config
     deploy_dms_config
     deploy_gtk_thunar_config
     deploy_wallpapers

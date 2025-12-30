@@ -779,22 +779,95 @@ The repository includes a comprehensive installation script (`install.sh`) that 
 - Updates bootloader configuration with resume parameters
 - Sets up suspend-then-hibernate with 2-hour delay
 
+## Configuration Deployment Method: Copy vs Symlink
+
+**Important**: The install script **COPIES** all configuration files, it does NOT create symlinks.
+
+### Why Copy Instead of Symlink?
+
+**Advantages of copying:**
+- **Repository independence**: Active configs don't affect the repo
+- **No accidental commits**: Local changes won't be accidentally committed
+- **Clean separation**: Development/testing separate from production
+- **Deliberate sync**: Must explicitly copy changes back to repo
+- **Proper ownership**: All files owned by user (not root)
+
+**Previous behavior (deprecated):**
+- Old versions used `ln -s` for niri config (symlink)
+- This caused active changes to modify repository directly
+- Risk of committing sensitive or system-specific data
+
+### Current Deployment Behavior
+
+**All configs are copied with proper ownership:**
+```bash
+# Niri configuration
+cp -r "$SCRIPT_DIR/.config/niri" "$HOME/.config/"
+chown -R "$USER:$USER" "$HOME/.config/niri"
+
+# DMS configuration
+cp "$SCRIPT_DIR/.config/DankMaterialShell/"* "$HOME/.config/DankMaterialShell/"
+chown -R "$USER:$USER" "$HOME/.config/DankMaterialShell"
+
+# GTK/Thunar configurations
+cp "$SCRIPT_DIR/.config/gtk-3.0/"* "$HOME/.config/gtk-3.0/"
+chown -R "$USER:$USER" "$HOME/.config/gtk-3.0"
+
+# And so on for all config directories...
+```
+
+**Ownership enforcement:**
+- Every deployment function calls `chown -R "$USER:$USER"`
+- Prevents root-owned files in user home directory
+- Ensures proper permissions for all applications
+
+### Converting from Old Symlink Method
+
+If upgrading from an older version that used symlinks:
+
+```bash
+# The install script will detect and remove old symlinks
+# Then copy fresh configs
+./install.sh  # Automatically handles conversion
+```
+
 ## Repository Maintenance
 
 **When updating configuration:**
-1. Test changes in active config (`~/.config/niri/`)
-2. Copy working config back to repository
-3. Update documentation (CLAUDE.md, README.md, TROUBLESHOOTING.md)
-4. Commit with descriptive message
-5. Push to GitHub
+1. Test changes in active config (`~/.config/niri/`, etc.)
+2. Verify everything works correctly
+3. Copy working config back to repository
+4. Update documentation (CLAUDE.md, README.md, TROUBLESHOOTING.md)
+5. Commit with descriptive message
+6. Push to GitHub
 
-**Git workflow:**
+**Syncing active config back to repository:**
 ```bash
 cd /home/chaos/niri-setup
-git add <changed_files>
+
+# Copy modified configs from active system
+cp -r ~/.config/niri/* .config/niri/
+cp -r ~/.config/DankMaterialShell/* .config/DankMaterialShell/
+cp -r ~/.config/gtk-3.0/* .config/gtk-3.0/
+cp -r ~/.config/gtk-4.0/* .config/gtk-4.0/
+# Add other config directories as needed
+
+# Review what changed
+git status
+git diff
+
+# Commit only intentional changes
+git add <specific_files>
 git commit -m "descriptive message"
 git push origin main
 ```
+
+**Best practices:**
+- Don't copy configs immediately after making changes
+- Test for a few days to ensure stability
+- Review all changes with `git diff` before committing
+- Avoid committing sensitive data (passwords, tokens, etc.)
+- Be selective with `git add` - don't blindly commit everything
 
 ## Reference Documentation
 
