@@ -674,7 +674,7 @@ optional_features_menu() {
     fi
 
     echo -e "${GREEN}2)${NC} Hibernation Support (swap file, suspend-then-hibernate)"
-    echo -e "${GREEN}3)${NC} Two-Factor Authentication (YubiKey, FIDO2/U2F hardware keys)"
+    echo -e "${GREEN}3)${NC} Additional Authentication Methods (YubiKey, FIDO2/U2F, fingerprint)"
     echo -e "${GREEN}4)${NC} Secure Boot (sign bootloader, enroll keys)"
     echo -e "${GREEN}5)${NC} CachyOS Bloat Cleanup (remove unnecessary packages)"
     echo -e "${GREEN}6)${NC} All of the above"

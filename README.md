@@ -104,27 +104,32 @@ Fresh installations use standard password-only authentication:
 
 The repository contains NO authentication data (YubiKey configs, PAM files, passwords, secrets). All such files are blocked by `.gitignore`.
 
-### Optional: Two-Factor Authentication
+### Optional: Additional Authentication Methods
 
-If you want to add hardware key authentication (YubiKey, FIDO2, U2F devices), an optional setup script is included:
+The installer offers flexible authentication setup with hardware keys (YubiKey, FIDO2/U2F devices):
 
 ```bash
 # After installation, optionally run:
 ~/niri-setup/scripts/setup-2fa.sh
 ```
 
-**What the 2FA script does:**
+**What the authentication setup script does:**
 - Guides you through registering YOUR hardware key(s) on YOUR system
 - Does NOT copy any authentication configs from the repository
 - Supports primary + backup key registration
-- Configures system login to require hardware key + password
-- Configures sudo to accept hardware key OR password (flexible)
+- **Flexible application** - choose where to apply authentication:
+  - **Greeter & Lock Screen** - Requires hardware key to login/unlock
+  - **Sudo commands** - Hardware key OR password for privilege elevation
+  - **Root/su commands** - Hardware key OR password for root access
+  - **Multiple options** - Select any combination (e.g., "1 2" for greeter+sudo)
+  - **Register only** - Register keys without applying to PAM (manual config later)
 - Creates backups before making changes
 
 **Important:**
-- 2FA setup is completely optional
+- Authentication setup is completely optional
 - You can skip this entirely and use password-only authentication
-- 2FA configuration is system-specific and not tracked in the repository
+- Configuration is system-specific and not tracked in the repository
+- If you select greeter/lock screen, you MUST have your hardware key to login
 
 ## Quick Start
 
@@ -382,7 +387,7 @@ After the base system installation completes, the installer presents an **intera
 **Menu Options:**
 1. **ASUS Laptop Support** (auto-detected, only shown on ASUS hardware)
 2. **Hibernation Support** (swap file, suspend-then-hibernate)
-3. **Two-Factor Authentication** (YubiKey, FIDO2/U2F hardware keys)
+3. **Additional Authentication Methods** (YubiKey, FIDO2/U2F, fingerprint)
 4. **Secure Boot** (sign bootloader, enroll keys)
 5. **CachyOS Bloat Cleanup** (remove unnecessary packages)
 6. **All of the above**
