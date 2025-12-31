@@ -106,30 +106,43 @@ The repository contains NO authentication data (YubiKey configs, PAM files, pass
 
 ### Optional: Additional Authentication Methods
 
-The installer offers flexible authentication setup with hardware keys (YubiKey, FIDO2/U2F devices):
+The installer offers flexible authentication setup with **hardware keys** (YubiKey, FIDO2/U2F) and **facial recognition** (Howdy):
 
 ```bash
 # After installation, optionally run:
 ~/niri-setup/scripts/setup-2fa.sh
 ```
 
-**What the authentication setup script does:**
-- Guides you through registering YOUR hardware key(s) on YOUR system
-- Does NOT copy any authentication configs from the repository
-- Supports primary + backup key registration
-- **Flexible application** - choose where to apply authentication:
-  - **Greeter & Lock Screen** - Requires hardware key to login/unlock
-  - **Sudo commands** - Hardware key OR password for privilege elevation
-  - **Root/su commands** - Hardware key OR password for root access
-  - **Multiple options** - Select any combination (e.g., "1 2" for greeter+sudo)
-  - **Register only** - Register keys without applying to PAM (manual config later)
+**Authentication Method Options:**
+1. **Hardware Key Only** (YubiKey, FIDO2/U2F devices)
+   - Physical security key authentication
+   - Supports primary + backup key registration
+2. **Facial Recognition Only** (Howdy - Windows Hello style)
+   - Face unlock using your webcam
+   - Supports multiple face models for different lighting
+3. **Both Methods** (Hardware Key + Facial Recognition)
+   - Use either method to authenticate (most convenient)
+
+**Application Targets** - Choose where to apply authentication:
+- **Greeter & Lock Screen** - Use auth method to login/unlock
+- **Sudo commands** - Auth method OR password for privilege elevation
+- **Root/su commands** - Auth method OR password for root access
+- **Multiple targets** - Select any combination (e.g., "1 2" for greeter+sudo)
+- **Register only** - Register methods without applying to PAM (manual config later)
+
+**What the script does:**
+- Guides you through setup on YOUR system (nothing copied from repository)
+- For hardware keys: Registers your key(s) with pam-u2f
+- For facial recognition: Captures face models with Howdy (from AUR)
+- Configures PAM to use selected authentication methods
 - Creates backups before making changes
 
 **Important:**
 - Authentication setup is completely optional
 - You can skip this entirely and use password-only authentication
 - Configuration is system-specific and not tracked in the repository
-- If you select greeter/lock screen, you MUST have your hardware key to login
+- Hardware key + facial recognition = most convenient (use either one)
+- Facial recognition works best in consistent lighting conditions
 
 ## Quick Start
 
