@@ -15,7 +15,7 @@ This setup includes:
 - **Automatic hardware detection** (GPU/CPU drivers, ASUS laptops)
 - **Automatic monitor configuration** (first-run + manual keybinding)
 - **Optional hibernation support** (40GB swap file with custom resume hooks)
-- **DMS lock screen** (manual + auto-lock + YubiKey 2FA support)
+- **DMS lock screen** (manual + auto-lock, optional 2FA setup script included)
 
 ## Prerequisites
 
@@ -90,6 +90,41 @@ sudo find / -group OLD_GID -exec chgrp -h NEW_GID {} \;
 - Changing UID later is risky and can break permissions
 - **Best practice**: Choose the correct UID during initial installation
 - If unsure, use the default (1000)
+
+## Authentication and Security
+
+### Default Authentication (No 2FA Required)
+
+**This repository does NOT require two-factor authentication.**
+
+Fresh installations use standard password-only authentication:
+- **Login/Lock Screen**: Password-only (via greetd + DMS greeter)
+- **sudo commands**: Password-only
+- **No YubiKey or hardware key required**
+
+The repository contains NO authentication data (YubiKey configs, PAM files, passwords, secrets). All such files are blocked by `.gitignore`.
+
+### Optional: Two-Factor Authentication
+
+If you want to add hardware key authentication (YubiKey, FIDO2, U2F devices), an optional setup script is included:
+
+```bash
+# After installation, optionally run:
+~/niri-setup/scripts/setup-2fa.sh
+```
+
+**What the 2FA script does:**
+- Guides you through registering YOUR hardware key(s) on YOUR system
+- Does NOT copy any authentication configs from the repository
+- Supports primary + backup key registration
+- Configures system login to require hardware key + password
+- Configures sudo to accept hardware key OR password (flexible)
+- Creates backups before making changes
+
+**Important:**
+- 2FA setup is completely optional
+- You can skip this entirely and use password-only authentication
+- 2FA configuration is system-specific and not tracked in the repository
 
 ## Quick Start
 

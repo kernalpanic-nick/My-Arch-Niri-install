@@ -40,100 +40,58 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Authentication and Security
 
-### Two-Factor Authentication Setup
+### ⚠️ IMPORTANT: Default Authentication (NO 2FA Required)
 
-**System Login (Greeter/Lock Screen):**
-- **YubiKey REQUIRED** - No password-only fallback
-- **sudo commands**: YubiKey OR password (either works, flexible authentication)
+**The repository does NOT configure or require two-factor authentication.**
+
+**Fresh Installation Authentication:**
+- **Greeter/Lock Screen**: Password-only (standard PAM authentication)
+- **sudo commands**: Password-only (standard system authentication)
 - **GNOME Keyring**: Auto-unlocked with login password (no separate unlock needed)
-- **Backup plan**: Get a second YubiKey and register it
 
-**YubiKey Configuration:**
-- Device: YubiKey 5 NFC (Serial: 20451143)
-- Registered keys stored in: `/home/chaos/.config/Yubico/u2f_keys`
-- PAM module: `pam_u2f.so`
-- Origin/AppID: `pam://Chaos-G14-Arch`
-- **Important**: YubiKey must be present to login or unlock screen
+**What the repository includes:**
+- `greetd` + `dms-greeter`: Graphical login (uses system PAM, no custom auth)
+- DMS lock screen: Invoked via `dms ipc call lock lock` (uses system PAM)
+- No YubiKey configs, no PAM files, no authentication data
 
-### Authentication Flows
-
-**Logging in at greeter/lock screen:**
-1. Enter username (if needed)
-2. Touch YubiKey when prompted
-3. Enter regular password
-4. Login successful
-5. **Without YubiKey**: Login will fail (by design for security)
-
-**Using sudo in terminal:**
-- **Option 1**: Touch YubiKey when prompted (if plugged in, no password needed)
-- **Option 2**: Enter password (if YubiKey not available)
-- Flexible authentication - either method works
-
-### PAM Configuration Files
-
-**System Login (Greeter/TTY/Lock Screen):**
-- Config: `/etc/pam.d/system-login`
-- Backup: `/etc/pam.d/system-login.backup.*`
-- Uses: `pam_u2f.so` (YubiKey required), `pam_gnome_keyring.so` (auto-unlock keyring)
-
-**Sudo:**
-- Config: `/etc/pam.d/sudo`
-- Backup: `/etc/pam.d/sudo.backup.*`
-- Uses: `pam_u2f.so` (sufficient) + `system-auth` (either YubiKey or password works)
-
-**GNOME Keyring:**
-- Auto-unlocked via `pam_gnome_keyring.so` in system-login
-- Keyring unlocks automatically when you login with your password
-- No separate keyring password prompt needed
-- Keyring daemon auto-starts via PAM session module
-
-### Emergency Recovery
-
-**If YubiKey is lost or not working:**
-
-1. **Boot from live USB** (or boot to GRUB/bootloader)
-2. **Decrypt and mount root filesystem:**
-   ```bash
-   # Example (adjust device names as needed)
-   cryptsetup open /dev/nvme0n1p2 luks
-   mount /dev/mapper/luks /mnt
-   ```
-3. **Temporarily disable U2F requirement:**
-   ```bash
-   # Edit the PAM config
-   nano /mnt/etc/pam.d/system-login
-   # Comment out the pam_u2f.so line by adding # at the start
-   # Save and exit
-   ```
-4. **Reboot and log in** with regular password only
-5. **Register new YubiKey** or restore from backup
-6. **Re-enable U2F** by uncommenting the line in system-login
-
-**To register additional YubiKeys (RECOMMENDED - do this soon!):**
-```bash
-# With the new YubiKey inserted (and current YubiKey working)
-sudo -u chaos pamu2fcfg -o pam://Chaos-G14-Arch -i pam://Chaos-G14-Arch >> /home/chaos/.config/Yubico/u2f_keys
-
-# Verify both keys are registered
-cat /home/chaos/.config/Yubico/u2f_keys
-# Should show two lines starting with "chaos:"
+**All authentication files are blocked by `.gitignore`:**
+```
+**/Yubico/          # YubiKey configurations
+**/u2f_keys*        # FIDO2/U2F key registrations
+**/pam.d/           # PAM authentication modules
+*.key, *.pem, *.gpg # Cryptographic keys
+**/*password*       # Password files
+**/*secret*         # Secret data
+**/*token*          # Authentication tokens
 ```
 
-**Backup your U2F keys file:**
+### Optional: Two-Factor Authentication Setup
+
+**If you want to enable 2FA** (YubiKey, FIDO2, U2F hardware keys), use the interactive setup script:
+
 ```bash
-# Copy to a safe location (encrypted USB drive, cloud storage, etc.)
-cp /home/chaos/.config/Yubico/u2f_keys ~/backup-u2f-keys.txt
+# Run the optional 2FA setup script
+~/niri-setup/scripts/setup-2fa.sh
 ```
 
-### Important Security Notes
+**What this script does:**
+- Guides you through registering your hardware key(s) interactively
+- Supports primary + backup key registration
+- Configures PAM for hardware key authentication
+- Creates backups before modifying system files
+- Provides recovery instructions
 
-- **YubiKey required for**: System login (greeter), lock screen, TTY login
-- **YubiKey optional for**: sudo (can use password instead)
-- **No password-only fallback for login**: YubiKey must be present to unlock/login
-- **GNOME Keyring**: Automatically unlocks with login password (no manual unlock needed)
-- **Backup your YubiKey registration**: Keep a copy of `/home/chaos/.config/Yubico/u2f_keys` in a safe place
-- **CRITICAL: Get a second YubiKey**: Register a backup key (~$25-30) and store it separately from your primary key
-- **Emergency access**: If YubiKey is lost, you'll need to boot from live USB to recover access
+**2FA Script Features:**
+- **Does NOT copy any configs from repository** (registers YOUR keys on YOUR system)
+- Asks for confirmation before making changes
+- Configures system login to require hardware key
+- Configures sudo to accept hardware key OR password
+- Auto-unlocks GNOME Keyring with password
+
+**Security Note:**
+- 2FA setup modifies `/etc/pam.d/` files (NOT in repository)
+- These changes are system-specific and not tracked in git
+- You can disable 2FA by reverting PAM configs (backups are created automatically)
 
 ## Working with the Niri Configuration
 
