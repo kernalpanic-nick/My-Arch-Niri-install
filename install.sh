@@ -26,6 +26,7 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 # Script directory
@@ -650,12 +651,173 @@ setup_hibernation_prompt() {
     fi
 }
 
+# Interactive menu for optional features
+optional_features_menu() {
+    echo -e "\n${CYAN}╔═══════════════════════════════════════════════╗${NC}"
+    echo -e "${CYAN}║  Optional Features Setup                     ║${NC}"
+    echo -e "${CYAN}╚═══════════════════════════════════════════════╝${NC}\n"
+
+    echo -e "${YELLOW}The base system installation is complete!${NC}"
+    echo -e "${YELLOW}You can now choose which optional features to set up.${NC}\n"
+
+    local features_selected=()
+    local laptop_type=$(detect_asus_laptop)
+
+    # Show available features
+    echo -e "${BLUE}Available optional features:${NC}\n"
+
+    # ASUS support (only show if ASUS laptop detected)
+    local asus_option=""
+    if [ "$laptop_type" = "asus" ]; then
+        echo -e "${GREEN}1)${NC} ASUS Laptop Support (asusctl, RGB controls, fan profiles)"
+        asus_option="available"
+    fi
+
+    echo -e "${GREEN}2)${NC} Hibernation Support (swap file, suspend-then-hibernate)"
+    echo -e "${GREEN}3)${NC} Two-Factor Authentication (YubiKey, FIDO2/U2F hardware keys)"
+    echo -e "${GREEN}4)${NC} Secure Boot (sign bootloader, enroll keys)"
+    echo -e "${GREEN}5)${NC} CachyOS Bloat Cleanup (remove unnecessary packages)"
+    echo -e "${GREEN}6)${NC} All of the above"
+    echo -e "${GREEN}7)${NC} None - Skip optional features"
+
+    echo -e "\n${YELLOW}Select an option [1-7]:${NC} "
+    read -r choice
+
+    case $choice in
+        1)
+            if [ "$asus_option" = "available" ]; then
+                features_selected+=("asus")
+            else
+                echo -e "${RED}ASUS laptop not detected - skipping${NC}"
+            fi
+            ;;
+        2)
+            features_selected+=("hibernation")
+            ;;
+        3)
+            features_selected+=("2fa")
+            ;;
+        4)
+            features_selected+=("secureboot")
+            ;;
+        5)
+            features_selected+=("cleanup")
+            ;;
+        6)
+            # All features
+            [ "$asus_option" = "available" ] && features_selected+=("asus")
+            features_selected+=("hibernation" "2fa" "secureboot" "cleanup")
+            ;;
+        7)
+            echo -e "${YELLOW}Skipping all optional features${NC}"
+            return
+            ;;
+        *)
+            echo -e "${RED}Invalid option - skipping optional features${NC}"
+            return
+            ;;
+    esac
+
+    # Execute selected features
+    for feature in "${features_selected[@]}"; do
+        case $feature in
+            asus)
+                echo -e "\n${CYAN}═══ Setting up ASUS Laptop Support ═══${NC}\n"
+                install_asus_packages_noninteractive
+                ;;
+            hibernation)
+                echo -e "\n${CYAN}═══ Setting up Hibernation ═══${NC}\n"
+                setup_hibernation_noninteractive
+                ;;
+            2fa)
+                echo -e "\n${CYAN}═══ Setting up Two-Factor Authentication ═══${NC}\n"
+                setup_2fa_guided
+                ;;
+            secureboot)
+                echo -e "\n${CYAN}═══ Setting up Secure Boot ═══${NC}\n"
+                setup_secureboot_guided
+                ;;
+            cleanup)
+                echo -e "\n${CYAN}═══ Cleaning up CachyOS Bloat ═══${NC}\n"
+                cleanup_cachyos_bloat
+                ;;
+        esac
+    done
+
+    echo -e "\n${GREEN}✓ Optional features setup complete${NC}"
+}
+
+# Non-interactive ASUS package installation (called from menu)
+install_asus_packages_noninteractive() {
+    echo -e "${GREEN}Installing ASUS packages...${NC}"
+
+    # Install from official repos
+    sudo pacman -S --needed --noconfirm asusctl rog-control-center supergfxctl
+
+    # Enable asusd service
+    sudo systemctl enable asusd
+
+    # Create asus-users group and add current user
+    echo -e "${YELLOW}Adding user to asus-users group...${NC}"
+    if ! getent group asus-users >/dev/null 2>&1; then
+        sudo groupadd asus-users
+        echo -e "${GREEN}✓ Created asus-users group${NC}"
+    fi
+
+    sudo usermod -aG asus-users "$USER"
+    echo -e "${GREEN}✓ Added $USER to asus-users group${NC}"
+    echo -e "${YELLOW}Note: You'll need to log out and back in for group changes to take effect${NC}"
+
+    # Copy ASUS configuration if available
+    if [ -f "$SCRIPT_DIR/etc/asusd/asusd.ron" ]; then
+        sudo cp "$SCRIPT_DIR/etc/asusd/asusd.ron" /etc/asusd/
+        echo -e "${GREEN}✓ Copied ASUS configuration${NC}"
+    fi
+
+    echo -e "${GREEN}✓ ASUS packages installed and configured${NC}"
+}
+
+# Non-interactive hibernation setup (called from menu)
+setup_hibernation_noninteractive() {
+    if [ -f "$SCRIPT_DIR/scripts/setup-hibernation.sh" ]; then
+        echo -e "${GREEN}Running hibernation setup script...${NC}"
+        sudo "$SCRIPT_DIR/scripts/setup-hibernation.sh"
+    else
+        echo -e "${RED}Error: Hibernation setup script not found${NC}"
+        echo "Expected: $SCRIPT_DIR/scripts/setup-hibernation.sh"
+    fi
+}
+
+# Guided 2FA setup (called from menu)
+setup_2fa_guided() {
+    if [ -f "$SCRIPT_DIR/scripts/setup-2fa.sh" ]; then
+        echo -e "${YELLOW}Launching 2FA setup wizard...${NC}\n"
+        bash "$SCRIPT_DIR/scripts/setup-2fa.sh"
+    else
+        echo -e "${RED}Error: 2FA setup script not found${NC}"
+        echo "Expected: $SCRIPT_DIR/scripts/setup-2fa.sh"
+        echo -e "${YELLOW}You can set up 2FA manually later${NC}"
+    fi
+}
+
+# Guided secure boot setup (called from menu)
+setup_secureboot_guided() {
+    if [ -f "$SCRIPT_DIR/scripts/setup-secure-boot.sh" ]; then
+        echo -e "${YELLOW}Launching Secure Boot setup wizard...${NC}\n"
+        bash "$SCRIPT_DIR/scripts/setup-secure-boot.sh"
+    else
+        echo -e "${RED}Error: Secure Boot setup script not found${NC}"
+        echo "Expected: $SCRIPT_DIR/scripts/setup-secure-boot.sh"
+        echo -e "${YELLOW}See SECURE_BOOT.md for manual setup instructions${NC}"
+    fi
+}
+
 # Main installation
 main() {
     # Initialize log file
     echo "Installation started at $(date)" > "$INSTALL_LOG"
 
-    echo "This will install niri and related packages, then symlink configs."
+    echo "This will install niri and related packages, then deploy configs."
     read -p "Continue? [y/N] " -n 1 -r
     echo
 
@@ -675,9 +837,9 @@ main() {
     deploy_gtk_thunar_config
     deploy_wallpapers
     setup_automount
-    install_asus_packages
-    setup_hibernation_prompt
-    cleanup_cachyos_bloat
+
+    # Show optional features menu
+    optional_features_menu
 
     echo -e "\n${GREEN}=== Installation Complete! ===${NC}"
 
@@ -705,6 +867,11 @@ main() {
     echo -e "\nConfig location: ${YELLOW}~/.config/niri${NC}"
     echo -e "\nMonitor configuration: Press ${YELLOW}Mod+Shift+M${NC} to configure monitors"
     echo -e "\nWallpapers: Press ${YELLOW}Mod+Y${NC} to browse wallpapers"
+
+    echo -e "\n${CYAN}Optional features (if skipped):${NC}"
+    echo -e "  Hibernation: ${YELLOW}sudo ~/niri-setup/scripts/setup-hibernation.sh${NC}"
+    echo -e "  2FA Setup:   ${YELLOW}~/niri-setup/scripts/setup-2fa.sh${NC}"
+    echo -e "  Secure Boot: ${YELLOW}~/niri-setup/scripts/setup-secure-boot.sh${NC}"
 
     # Exit with error code if there were failures
     if [ ${#FAILED_PACKAGES[@]} -gt 0 ]; then

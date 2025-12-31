@@ -377,6 +377,19 @@ The script will:
 
 ## Optional Features
 
+After the base system installation completes, the installer presents an **interactive menu** where you can choose which optional features to set up:
+
+**Menu Options:**
+1. **ASUS Laptop Support** (auto-detected, only shown on ASUS hardware)
+2. **Hibernation Support** (swap file, suspend-then-hibernate)
+3. **Two-Factor Authentication** (YubiKey, FIDO2/U2F hardware keys)
+4. **Secure Boot** (sign bootloader, enroll keys)
+5. **CachyOS Bloat Cleanup** (remove unnecessary packages)
+6. **All of the above**
+7. **None** - Skip optional features
+
+You can run any skipped features manually later using the setup scripts in `~/niri-setup/scripts/`.
+
 ### Hibernation Support
 
 The installer offers optional hibernation setup with:
@@ -403,6 +416,30 @@ The installer auto-detects ASUS ROG laptops and offers to install:
 **Important**: The installer automatically adds your user to the `asus-users` group, which is required for controlling RGB keyboard, fan profiles, and other ASUS-specific features. You'll need to log out and back in after installation for group membership to take effect.
 
 Includes pre-configured settings for optimal power management and RGB control via `Mod+F4` keybinding.
+
+### Secure Boot
+
+The installer offers optional secure boot setup for Limine bootloader:
+- **Automated key generation and enrollment** (includes Microsoft certificates)
+- **Bootloader signing** with sbctl
+- **BLAKE2B checksum verification** for configuration files
+- **Automatic re-signing** on updates via pacman hooks
+
+**Requirements**: UEFI firmware in Setup Mode, Limine bootloader
+
+**What the setup wizard does:**
+- Creates custom secure boot keys (PK, KEK, db)
+- Enrolls keys with Microsoft certificates (-m flag)
+- Signs Limine EFI binaries automatically
+- Enables configuration verification
+- Guides you through UEFI settings
+
+**Manual setup later:**
+```bash
+~/niri-setup/scripts/setup-secure-boot.sh
+```
+
+**Detailed instructions**: See [SECURE_BOOT.md](SECURE_BOOT.md) for complete documentation and troubleshooting.
 
 ### Desktop Wallpapers
 
