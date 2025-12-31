@@ -1,5 +1,8 @@
-dms-shell-git
+# DMS (DankMaterialShell) - Use -bin package for reliability
+dms-shell-bin
+# DMS Greeter for greetd
 greetd-dms-greeter-git
+# Other AUR packages
 opcode-bin
 # python-dlib  # DISABLED: Fails to build with GCC 15.2.1 (compilation warnings treated as errors)
 visual-studio-code-bin

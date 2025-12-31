@@ -1,9 +1,57 @@
+# ═══════════════════════════════════════════════
+# SECURITY: Authentication and secrets - NEVER commit!
+# ═══════════════════════════════════════════════
+**/Yubico/
+**/u2f_keys*
+**/pam.d/
+*.key
+*.pem
+*.gpg
+**/ssh/id_*
+**/ssh/known_hosts
+**/gnupg/
+**/.gnupg/
+**/.ssh/
+**/.password*
+**/*password*
+**/*secret*
+**/*token*
+**/.local/share/keyrings/
+**/keyring/
+
+# Personal data that varies per system
+**/.bash_history
+**/.zsh_history
+**/.lesshst
+**/.viminfo
+
 # Backup files
 *.backup.*
 *.bak
 *~
 
+# Logs
+*.log
+install.log
+
+# System-specific runtime files
+.config/niri/.monitor-configured
+**/.cache/
+
+# Build artifacts
+*.o
+*.so
+*.a
+__pycache__/
+*.pyc
+*.class
+
+# Editor files
+*.swp
+*.swo
+.vscode/
+.idea/
+
 # OS files
 .DS_Store
 Thumbs.db
-install.log
